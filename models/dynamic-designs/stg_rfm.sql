@@ -1,0 +1,1 @@
+select * from exalted-slate-410901.dynamic_designs.rfm_summary

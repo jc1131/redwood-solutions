@@ -1,9 +1,9 @@
 
 with rfm_summary as (
-  select * from exalted-slate-410901.dynamic_designs.rfm_summary
+  select * from {{ ref('stg_rfm') }}
 )
 , rfm_category as (
-  select * from exalted-slate-410901.dynamic_designs.rfm_category
+  select * from {{ ref('stg_category') }}
 
 ),final as (
 select
