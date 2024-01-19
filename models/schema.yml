@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: champion_model
+    columns:
+      - name: customer_name
+        tests:
+          - unique
+          - not_null
+        description: Name of customer from from Quickbooks
+
+  - name: stg_rfm
+    columns:
+      - name: CustomerID
+        tests:
+          - not_null
+
+  - name: stg_category
+    columns:
+      - name: rfm_score
+        tests:
+          - unique
+          - not_null
+      - name: rfm_category
+        tests:
+          - accepted_values:
+              values: ['Champion', 'New Customer', 'Potential Loyalist', 'Loyal', 'Promising','About To Sleep', 'Lost', 'Can\u0027t Loose']
