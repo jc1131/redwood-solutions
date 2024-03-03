@@ -26,8 +26,9 @@ final AS (
                 THEN 'Champion'
             ELSE rfm_c.rfm_category
         END AS customer_segment_adjusted,
-        rfm_s.r_quartile + 1 AS r_quart,
-        rfm_s.f_quartile + 1 AS f_quart
+        rfm_s.r_quartile AS r_quart,
+        rfm_s.f_quartile AS f_quart,
+        rfm_s.m_quartile as m_quart
     FROM rfm_summary AS rfm_s
     LEFT JOIN rfm_category AS rfm_c ON rfm_s.rfm_score = rfm_c.rfm_score
     LEFT JOIN stg_customer AS cust ON rfm_s.customerid = cust.customer_id
