@@ -1,0 +1,67 @@
+merge `hwp-data.hwp_parkhub_conformed.transaction` target
+using `hwp-data.hwp_parkhub_raw.transaction` source 
+  on target.id = source.id
+when not matched by target then 
+insert (
+barcode
+,basePrice
+,claimed
+,confirmationCode
+,couponId
+,createdAt
+,employeeFirstName
+,employeeLastName
+,eventId
+,eventName
+,id
+,landmarkId
+,landmarkName
+,lotId
+,lotLocation_lat
+,lotLocation_lon
+,lotName
+,lotOperatorEmail
+,lotOperatorId
+,lotOperatorName
+,offlineStatus
+,pricingId
+,refundStatus
+,status
+,total
+,transactionTime
+,transactionType
+,type
+,updatedAt
+)
+values 
+(
+source.barcode
+,source.basePrice
+,source.claimed
+,source.confirmationCode
+,source.couponId
+,source.createdAt
+,source.employeeFirstName
+,source.employeeLastName
+,source.eventId
+,source.eventName
+,source.id
+,source.landmarkId
+,source.landmarkName
+,source.lotId
+,source.lotLocation_lat
+,source.lotLocation_lon
+,source.lotName
+,source.lotOperatorEmail
+,source.lotOperatorId
+,source.lotOperatorName
+,source.offlineStatus
+,source.pricingId
+,source.refundStatus
+,source.status
+,source.total
+,source.transactionTime
+,source.transactionType
+,source.type
+,source.updatedAt
+)
