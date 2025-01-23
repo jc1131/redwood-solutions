@@ -15,10 +15,19 @@ renamed as (
         lower_amount,
         higher_amount,
         commission_percentage,
-        effective_from
+        effective_from,
+        'config_commission' as source_key,
+        ROW_NUMBER() OVER() source_row_number
 
     from source
 
+),
+
+pk_generation as (
+    select
+    {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as config_commission_pk
+    ,*
+    from renamed
 )
 
-select * from renamed
+select * from pk_generation

@@ -16,10 +16,19 @@ renamed as (
         bonus_end_date,
         bonus_threshold,
         bonus_amount,
-        effective_from
+        effective_from,
+        'config_bonus' as source_key,
+        ROW_NUMBER() OVER() source_row_number
 
     from source
 
+),
+
+pk_generation as (
+    select
+    {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as config_bonus_pk
+    ,*
+    from renamed
 )
 
-select * from renamed
+select * from pk_generation

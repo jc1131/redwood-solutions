@@ -18,10 +18,19 @@ renamed as (
         draw_max,
         balance_owed,
         note,
-        effective_from
+        effective_from,
+        'config_draw' as source_key,
+        ROW_NUMBER() OVER() source_row_number
 
     from source
 
+),
+
+pk_generation as (
+    select
+    {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as config_draw_pk
+    ,*
+    from renamed
 )
 
-select * from renamed
+select * from pk_generation
