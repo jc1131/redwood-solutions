@@ -1,0 +1,45 @@
+models:
+  - name: stg_commission_form__config_bonus
+    description: "Staging model for the config_bonus table, transforming raw data for analysis."
+    columns:
+      - name: config_bonus_pk
+        description: "Primary key of the staged config_bonus table."
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_commission_form__config_commission
+    description: "Staging model for the config_commission table, preparing data for reporting."
+    columns:
+      - name: config_commission_pk
+        description: "Primary key of the staged config_commission table."
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_commission_form__config_commission_relationship
+    description: "Staging model for the config_commission_relationship table, normalizing relationships."
+    columns:
+      - name: config_commission_relationship_pk
+        description: "Primary key of the staged config_commission_relationship table."
+        tests:
+          - unique
+          - not_null
+  
+  - name: stg_commission_form__config_draw
+    description: "Staging model for the config_draw table, cleaning and organizing draw configurations."
+    columns:
+      - name: config_draw_pk
+        description: "Primary key of the staged config_draw table."
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_commission_form__form_response
+    description: "Staging model for the form_response table, consolidating response data."
+    columns:
+      - name: form_response_pk
+        description: "Primary key of the staged form_response table."
+        tests:
+          - unique
+          - not_null

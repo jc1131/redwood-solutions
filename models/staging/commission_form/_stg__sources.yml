@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: commission_form
+    schema: fieldpros_commission_sheet
+    tables:
+      - name: config_bonus
+        description: "Table containing configuration settings for bonus structures, including thresholds and payout details."
+      - name: config_commission
+        description: "Table storing configuration rules for commission calculations, including rates and criteria."
+      - name: config_commission_relationship
+        description: "Table defining relationships between commission configurations and associated entities, such as sales reps or products."
+      - name: config_draw
+        description: "Table containing draw configurations, including advance payment details and repayment terms."
+      - name: form_response
+        description: "Table capturing responses from commission-related forms, including input from sales reps or administrators."
