@@ -6,12 +6,10 @@ commission_config AS (
     SELECT * 
     FROM {{ ref('stg_commission_form__config_commission') }}
 ),
-commission_config_relationship as (
-    select * from {{ ref('stg_commission_form__config_commission_relationship') }}
-)
 commission_tier AS (
     SELECT 
         base_response.form_response_pk,
+        ROW_NUMBER() OVER (partition by form_response_pk ORDER BY form_response_pk) AS commission_row_number,  -- Add row number here
         base_response.recruiter_email,
         base_response.due_date,
         base_response.invoice_amount,
@@ -36,16 +34,19 @@ commission_tier AS (
     WHERE recruiter_email = 'Gayle Simons@fieldpros.com'
 ), final as (
     SELECT 
-    form_response_pk
+    {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'commission_row_number']) }} as form_commission_pk
+    ,form_response_pk as form_response_fk
     ,recruiter_email
     ,due_date
     ,invoice_amount
     ,credit_amount
     ,running_total
-    ,SUM(cast(tier_commission as int)) AS total_commission
-    ,'primary ' as commission_description
+    ,lower_amount
+    ,higher_amount
+    ,commission_percentage
+    ,tier_amount
+    ,tier_commission
 FROM commission_tier
-GROUP BY all
 )
 select *
 from final
