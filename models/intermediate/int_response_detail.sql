@@ -57,7 +57,7 @@ SELECT form_response_pk
     select
     {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'lookup_recruiter.primary_recruiter_email','job_order_role']) }} as form_response_detail_pk
     ,form_response_pk as form_response_fk
-    ,lookup_recruiter.primary_recruiter_email
+    ,lookup_recruiter.primary_recruiter_email as recruiter_email
     ,rename_credit.recruiter_credit_percentage
     ,rename_credit.recruiter_name
     ,rename_credit.credit_amount
