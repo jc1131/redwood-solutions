@@ -19,11 +19,10 @@ form_response_pk
 ,offer_signature_date
 ,invoice_payment_terms
 ,invoice_payment_date
-, 
-  CASE 
+,CASE 
     WHEN invoice_payment_date = 'Work Start Date' THEN DATE_ADD(work_start_date, INTERVAL payment_term_number DAY)
     WHEN invoice_payment_date = 'Offer Signature Date' THEN DATE_ADD(offer_signature_date, INTERVAL payment_term_number DAY)
     ELSE NULL -- Handle unexpected cases
   END AS due_date
-
+,invoice_amount
  from source_invoice

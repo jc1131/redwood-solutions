@@ -1,17 +1,3 @@
-WITH commission_tiers AS (
-select * from {{ ref('stg_commission_form__config_commission') }}
-),
-int_invoice as (
-    select * from {{ ref('int_response_header') }}
-)
-running_totals AS (
-  SELECT 
-    request_id,
-    running_total, 
-    commission_amount,
-    running_total - commission_amount AS previous_total
-  FROM int_invoice
-)
 SELECT 
   rt.request_id,
   t.min_amount,
