@@ -6,8 +6,8 @@ response_detail as (
 )
 SELECT 
 response_header.form_response_pk,
-response_header.due_date,
 response_detail.recruiter_email, 
+response_header.due_date,
 response_header.invoice_amount,
 response_detail.credit_amount,
 SUM(response_detail.credit_amount) OVER (PARTITION BY response_detail.recruiter_email ORDER BY response_header.due_date) AS running_total

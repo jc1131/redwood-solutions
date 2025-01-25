@@ -1,5 +1,5 @@
 with source_recruiter as (
-    select * from {{ ref('stg_commission_form__config_commission') }}
+    select * from {{ ref('stg_commission_form__config_commission_relationship') }}
 ),
 rollup_recruiter as (
     select distinct
