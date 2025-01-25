@@ -50,7 +50,9 @@ SELECT form_response_pk
     ,invoice_credit as credit_amount
     ,job_order_role
     ,CONCAT(FORMAT('%.0f%%', agreement_job_order_percentage * 100), ' credit for ', job_order_role) AS form_detail_description
+    ,SUM(agreement_job_order_percentage) OVER (PARTITION BY form_response_pk) = 1.0 AS is_valid_percentage
     from combine_credit
+    group by all
 ),pk_generation as (
     select
     {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'lookup_recruiter.recruiter_email','job_order_role']) }} as form_response_detail_pk
@@ -61,6 +63,7 @@ SELECT form_response_pk
     ,rename_credit.credit_amount
     ,rename_credit.job_order_role
     ,rename_credit.form_detail_description
+    ,is_valid_percentage
     from rename_credit
         left join lookup_recruiter on lookup_recruiter.recruiter_name = rename_credit.recruiter_name
 )
