@@ -51,9 +51,7 @@ SELECT job_order_number
     ,invoice_credit as credit_amount
     ,job_order_role
     ,CONCAT(FORMAT('%.0f%%', agreement_job_order_percentage * 100), ' credit for ', job_order_role) AS credit_description
-    ,SUM(agreement_job_order_percentage) OVER (PARTITION BY job_order_number) = 1.0 AS is_valid_percent_allocation
     from combine_credit
-    group by all
 ),pk_generation as (
     select
     {{ dbt_utils.generate_surrogate_key(['job_order_number', 'source_recruiter.recruiter_email','job_order_role']) }} as invoice_credit_pk
