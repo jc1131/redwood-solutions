@@ -2,7 +2,7 @@ WITH commission_tiers AS (
 select * from {{ ref('stg_commission_form__config_commission') }}
 ),
 int_invoice as (
-    select * from {{ ref('int_invoice') }}
+    select * from {{ ref('int_response_header') }}
 )
 running_totals AS (
   SELECT 
@@ -10,7 +10,7 @@ running_totals AS (
     running_total, 
     commission_amount,
     running_total - commission_amount AS previous_total
-  FROM commission_requests
+  FROM int_invoice
 )
 SELECT 
   rt.request_id,

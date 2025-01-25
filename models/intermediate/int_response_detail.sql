@@ -1,12 +1,11 @@
 with source_form as (
     select * from {{ ref('stg_commission_form__form_response') }} where invoice_amount is not null
-),
-source_recruiter as (
+),lookup_recruiter as (
     select * from {{ ref('int_recruiter') }}
 ),
 combine_credit as (
 SELECT 
-job_order_number
+form_response_pk
 ,invoice_amount
   ,agreement_job_order_percentage 
   ,agreement_job_order_recruiter 
@@ -16,7 +15,7 @@ job_order_number
  FROM source_form
  
 union all
-SELECT job_order_number
+SELECT form_response_pk
 ,invoice_amount
   ,account_manager_percentage
   ,account_manager_recruiter
@@ -25,7 +24,7 @@ SELECT job_order_number
 
  FROM source_form
  union all
-SELECT job_order_number
+SELECT form_response_pk
 ,invoice_amount
   ,working_candidate_percentage
   ,working_candidate_recruiter
@@ -34,7 +33,7 @@ SELECT job_order_number
 
  FROM source_form
  union all
-SELECT job_order_number
+SELECT form_response_pk
 ,invoice_amount
   ,candidate_ownership_percentage
   ,candidate_ownership_recruiter
@@ -44,20 +43,26 @@ SELECT job_order_number
  FROM source_form
 ),rename_credit as (
     select
-    job_order_number
+    form_response_pk
     ,invoice_amount
     ,agreement_job_order_percentage as recruiter_credit_percentage
     ,agreement_job_order_recruiter as recruiter_name
     ,invoice_credit as credit_amount
     ,job_order_role
-    ,CONCAT(FORMAT('%.0f%%', agreement_job_order_percentage * 100), ' credit for ', job_order_role) AS credit_description
+    ,CONCAT(FORMAT('%.0f%%', agreement_job_order_percentage * 100), ' credit for ', job_order_role) AS form_detail_description
     from combine_credit
 ),pk_generation as (
     select
-    {{ dbt_utils.generate_surrogate_key(['job_order_number', 'source_recruiter.recruiter_email','job_order_role']) }} as invoice_credit_pk
-    ,source_recruiter.recruiter_email
-    ,rename_credit.*
+    {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'lookup_recruiter.recruiter_email','job_order_role']) }} as form_response_detail_pk
+    ,form_response_pk as form_response_fk
+    ,lookup_recruiter.recruiter_email
+    ,rename_credit.invoice_amount
+    ,rename_credit.recruiter_credit_percentage
+    ,rename_credit.recruiter_name
+    ,rename_credit.credit_amount
+    ,rename_credit.job_order_role
+    ,rename_credit.form_detail_description
     from rename_credit
-        left join source_recruiter on source_recruiter.recruiter_name = rename_credit.recruiter_name
+        left join lookup_recruiter on lookup_recruiter.recruiter_name = rename_credit.recruiter_name
 )
 select * from pk_generation
