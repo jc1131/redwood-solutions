@@ -1,7 +1,7 @@
 with source_form as (
     select * from {{ ref('stg_commission_form__form_response') }} where invoice_amount is not null
 ),lookup_recruiter as (
-    select * from {{ ref('int_recruiter') }}
+    select * from {{ ref('stg_commission_form__config_commission_relationship') }}
 ),
 combine_credit as (
 SELECT 
@@ -55,9 +55,9 @@ SELECT form_response_pk
     group by all
 ),pk_generation as (
     select
-    {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'lookup_recruiter.recruiter_email','job_order_role']) }} as form_response_detail_pk
+    {{ dbt_utils.generate_surrogate_key(['form_response_pk', 'lookup_recruiter.primary_recruiter_email','job_order_role']) }} as form_response_detail_pk
     ,form_response_pk as form_response_fk
-    ,lookup_recruiter.recruiter_email
+    ,lookup_recruiter.primary_recruiter_email
     ,rename_credit.recruiter_credit_percentage
     ,rename_credit.recruiter_name
     ,rename_credit.credit_amount
@@ -65,6 +65,6 @@ SELECT form_response_pk
     ,rename_credit.form_detail_description
     ,is_valid_percentage
     from rename_credit
-        left join lookup_recruiter on lookup_recruiter.recruiter_name = rename_credit.recruiter_name
+        left join lookup_recruiter on lookup_recruiter.primary_recruiter_name = rename_credit.recruiter_name
 )
 select * from pk_generation
