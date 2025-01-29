@@ -1,6 +1,6 @@
 WITH base_response AS (
     SELECT * 
-    FROM {{ ref('int_response_running_total') }}
+    FROM {{ ref('int_response_combined') }}
 ),
 commission_config AS (
     SELECT * 
@@ -48,6 +48,11 @@ commission_tier AS (
     ,tier_commission
 FROM commission_tier
 )
-select *
+select 
+
+CASE 
+        WHEN tier_amount < credit_amount THEN 'split across tiers: $' 
+        ELSE 'calculated entirely in Tier'
+    END
 from final
   
