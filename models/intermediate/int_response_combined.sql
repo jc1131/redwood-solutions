@@ -27,7 +27,7 @@ SELECT
 ,response_header.due_date
 ,response_header.invoice_amount
 ,SUM(response_detail.credit_amount) OVER (PARTITION BY response_detail.recruiter_email ORDER BY response_header.due_date) AS running_total
-,response_detail.primaas recruiter_email
+,response_detail.recruiter_email
 ,response_detail.recruiter_credit_percentage
 ,response_detail.recruiter_name
 ,response_detail.credit_amount
