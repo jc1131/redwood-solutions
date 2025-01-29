@@ -9,7 +9,7 @@ commission_tier AS (
     SELECT 
         base_response.form_response_combine_pk,
         ROW_NUMBER() OVER (partition by form_response_combine_pk ORDER BY form_response_combine_pk) AS commission_row_number,  -- Add row number here
-        base_response.recruiter_email,
+        base_response.primary_recruiter_name,
         base_response.due_date,
         base_response.invoice_amount,
         base_response.credit_amount,
@@ -35,7 +35,7 @@ commission_tier AS (
     SELECT 
     {{ dbt_utils.generate_surrogate_key(['form_response_combine_pk', 'commission_row_number']) }} as form_commission_pk
     ,form_response_combine_pk as form_response_combine_fk
-    ,recruiter_email
+    ,primary_recruiter_name as recruiter_name
     ,due_date
     ,invoice_amount
     ,credit_amount
