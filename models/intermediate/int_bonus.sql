@@ -5,7 +5,13 @@ config_commission_relationship as (
     select * from {{ ref('stg_commission_form__config_commission_relationship') }}
 ),dim_date as (
     select * from {{ ref('dim_date') }}
-),
+),activity_bonus_date as (
+     SELECT month_name, month_end_date,next_pay_date
+FROM dim_date
+WHERE year_number = EXTRACT(YEAR FROM CURRENT_DATE())
+qualify row_number() over (partition by month_name, month_end_date order by next_date_day desc) = 1
+order by 2 asc
+)
 bonus_configuration as (
     select * from {{ ref('stg_commission_form__config_bonus') }}
 ),
