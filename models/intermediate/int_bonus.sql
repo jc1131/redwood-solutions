@@ -80,6 +80,7 @@ qualify ROW_NUMBER() OVER (
 retro_bonus as (
     select
     *
+    
     from bonus_configuration
         left join primary_bonus on    primary_bonus.primary_bonus_pk = bonus_configuration.config_bonus_pk
 ),
