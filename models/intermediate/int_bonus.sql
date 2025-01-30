@@ -9,9 +9,9 @@ config_commission_relationship as (
 bonus_configuration as (
     select * from {{ ref('stg_commission_form__config_bonus') }}
 ),
-secondary_commission as (
+secondary_bonus as (
 select 
-{{ dbt_utils.generate_surrogate_key(['config_commission_relationship.config_commission_relationship_pk', 'job_order_number']) }} as config_bonus_pk
+{{ dbt_utils.generate_surrogate_key(['config_commission_relationship.config_commission_relationship_pk', 'job_order_number']) }} as secondary_bonus_pk
 ,config_commission_relationship.secondary_recruiter_name AS recruiter_name
 ,DATE_ADD(work_start_date, INTERVAL commission_hold_days DAY) AS bonus_pay_date
 ,config_commission_relationship.commission_rate * invoice_amount as bonus_amount
@@ -39,25 +39,57 @@ from base_response
 
 
 ),combine_bonus_sale as (
- select 
---{{ dbt_utils.generate_surrogate_key(['config_commission_relationship.config_commission_relationship_pk', 'job_order_number']) }} as config_bonus_pk
+ select config_bonus_pk,
+        bonus_configuration.employee_email as recruiter_email,
+                bonus_configuration.employee_name as recruiter_name,
 
-config_bonus_pk
-,employee_name
-,employee_email
-,bonus_end_date
-,bonus_plan
-,bonus_threshold
-,bonus_amount
-,sale_ytd.*
--- , ROW_NUMBER() OVER (
---     PARTITION BY recruiter_email,bonus_end_date,bonus_plan
---     ORDER BY due_date desc) as row_num
-from sale_ytd
-    join bonus_configuration on sale_ytd.recruiter_email = bonus_configuration.employee_email
-    and sale_ytd.due_date between bonus_configuration.bonus_start_date and bonus_configuration.bonus_end_date
-)
-select * from combine_bonus_sale
+        bonus_configuration.bonus_plan,
+        bonus_configuration.bonus_threshold,
+        bonus_configuration.bonus_amount,
+        bonus_configuration.bonus_start_date,
+        bonus_configuration.bonus_end_date,
+        base_response.due_date,
+        SUM(base_response.invoice_amount) OVER (
+            PARTITION BY bonus_configuration.employee_email, bonus_configuration.bonus_start_date, bonus_configuration.bonus_end_date
+            ORDER BY base_response.due_date ASC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS bonus_ytd,
+        
+from bonus_configuration
+    join base_response on base_response.recruiter_email = bonus_configuration.employee_email
+    and base_response.due_date between bonus_configuration.bonus_start_date and bonus_configuration.bonus_end_date
+),primary_bonus as (
+    select
+    config_bonus_pk as primary_bonus_pk
+    ,recruiter_name
+    ,case 
+        when bonus_ytd >= bonus_threshold then due_date
+        else bonus_end_date
+        end as bonus_pay_date
+    ,case 
+        when bonus_ytd >= bonus_threshold then bonus_amount
+        else 0
+        end as bonus_amount
+    ,CONCAT(bonus_plan, ' payout') as bonus_description
+    from combine_bonus_sale
 qualify ROW_NUMBER() OVER (
-    PARTITION BY recruiter_email,bonus_end_date,bonus_plan
-    ORDER BY due_date desc) = 1
+     PARTITION BY config_bonus_pk
+     ORDER BY bonus_pay_date asc) = 1 
+),
+
+retro_bonus as (
+    select
+    *
+    from bonus_configuration
+        left join primary_bonus on    primary_bonus.primary_bonus_pk = bonus_configuration.config_bonus_pk
+),
+    
+    final as (
+    select * from secondary_bonus
+    union all 
+    select * from primary_bonus
+    -- union all 
+    -- select * from retro_bonus
+)
+select * from retro_bonus 
+
