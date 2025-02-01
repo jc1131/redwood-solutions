@@ -31,9 +31,19 @@ select
 employee_name
 ,pay_period.pay_date
 ,draw_amount * - 1 as draw_amount
+,'Semi-monthly draw' as draw_description
 
 from config_draw
 join pay_period on 1=1
+union all 
+
+select
+employee_name
+,config_draw.draw_start_date
+,balance_owed * -1 as draw_amount
+,'Balance forward' as draw_description
+from config_draw
+join dim_date on dim_date.date_day = config_draw.draw_start_date
 )
 -- ,pay_period_amount as (
 
@@ -48,6 +58,7 @@ select
     , SUM(draw_pay_period.draw_amount + COALESCE(commission_pay_period.commission_amount, 0)) 
         OVER (PARTITION BY draw_pay_period.employee_name ORDER BY draw_pay_period.pay_date 
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as balance_amount
+    ,draw_pay_period.draw_description
 from draw_pay_period
     left join commission_pay_period on commission_pay_period.pay_date = draw_pay_period.pay_date
     and  commission_pay_period.employee_name = draw_pay_period.employee_name
