@@ -1,54 +1,54 @@
 models:
   - name: int_bonus
-    description: "Staging model for the config_bonus table, transforming raw data for analysis."
+    description: "Intermediate model for transforming raw bonus data from the config_bonus table, standardizing it for accurate bonus calculations and analysis."
     columns:
       - name: bonus_pk
-        description: "Primary key of the staged config_bonus table."
+        description: "Unique identifier (primary key) for each bonus record in the staged config_bonus table."
         tests:
           - unique
           - not_null
 
   - name: int_commission
-    description: "Staging model for the config_commission table, preparing data for reporting."
+    description: "Intermediate model for preparing commission data from the config_commission table, ensuring data integrity for reporting and analysis."
     columns:
       - name: commission_pk
-        description: "Primary key of the staged config_commission table."
+        description: "Unique identifier (primary key) for each commission record in the staged config_commission table."
         tests:
           - unique
           - not_null
 
   - name: int_draw
-    description: "Staging model for the config_commission_relationship table, normalizing relationships."
+    description: "Intermediate model for normalizing draw-related data from the config_commission_relationship table, enabling clear relationships between commissions and draws."
     columns:
       - name: draw_pk
-        description: "Primary key of the staged config_commission_relationship table."
+        description: "Unique identifier (primary key) for each draw record in the staged config_commission_relationship table."
         tests:
           - unique
           - not_null
   
   - name: int_response_combined
-    description: "Staging model for the config_draw table, cleaning and organizing draw configurations."
+    description: "Intermediate model for combining the forma detail and header into one model."
     columns:
       - name: form_response_combine_pk
-        description: "Primary key of the staged config_draw table."
+        description: "Unique identifier (primary key) for each combined form response."
         tests:
           - unique
           - not_null
 
   - name: int_response_detail
-    description: "Staging model for the form_response table, consolidating response data."
+    description: "Intermediate model for consolidating detailed response data from the form_response table, ensuring granular tracking of form submissions."
     columns:
       - name: form_response_detail_pk
-        description: "Primary key of the staged form_response table."
+        description: "Unique identifier (primary key) for each detailed form response record in the staged form_response table."
         tests:
           - unique
           - not_null
 
   - name: int_response_header
-    description: "Staging model for the form_activity table, consolidating activity bonus data."
+    description: "Intermediate model for consolidating high-level activity bonus data from the form_activity table, supporting accurate bonus tracking and reporting."
     columns:
       - name: form_response_pk
-        description: "Primary key of the staged form_activity table."
+        description: "Unique identifier (primary key) for each activity bonus record in the staged form_activity table."
         tests:
           - unique
-          - not_null          
+          - not_null
