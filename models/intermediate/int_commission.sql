@@ -49,4 +49,4 @@ FROM commission_tier
 select 
 *
 from final
-  
+  where recruiter_name = 'Daniel Burke'
