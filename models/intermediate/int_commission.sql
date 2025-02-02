@@ -32,7 +32,7 @@ commission_tier AS (
       AND base_response.recruiter_email = commission_config.employee_email
 ), final as (
     SELECT 
-    {{ dbt_utils.generate_surrogate_key(['form_response_combine_pk', 'commission_row_number']) }} as form_commission_pk
+    {{ dbt_utils.generate_surrogate_key(['form_response_combine_pk', 'commission_row_number']) }} as commission_pk
     ,form_response_combine_pk as form_response_combine_fk
     ,recruiter_name as recruiter_name
     ,due_date
