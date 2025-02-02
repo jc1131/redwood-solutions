@@ -45,10 +45,7 @@ employee_name
 from config_draw
 join dim_date on dim_date.date_day = config_draw.draw_start_date
 )
--- ,pay_period_amount as (
-
---     select
--- )
+,pay_period_amount as (
 
 select
     draw_pay_period.employee_name
@@ -62,43 +59,5 @@ select
 from draw_pay_period
     left join commission_pay_period on commission_pay_period.pay_date = draw_pay_period.pay_date
     and  commission_pay_period.employee_name = draw_pay_period.employee_name
-
-
-
-/*
-, biweekly_calc AS (
-    SELECT 
-        d.salesperson_id,
-        d.biweekly_period,
-        d.biweekly_draw,
-        COALESCE(s.total_commission, 0) AS total_commission,
-        d.biweekly_draw - COALESCE(s.total_commission, 0) AS draw_balance,
-        GREATEST(0, COALESCE(s.total_commission, 0) - d.biweekly_draw) AS extra_commission_payout
-    FROM draw d
-    LEFT JOIN sales s 
-        ON d.salesperson_id = s.salesperson_id 
-        AND d.biweekly_period = s.biweekly_period
-),
-ytd_calc AS (
-    SELECT 
-        salesperson_id,
-        biweekly_period,
-        biweekly_draw,
-        total_commission,
-        draw_balance,
-        extra_commission_payout,
-        -- Running total to track YTD draw payout
-        SUM(biweekly_draw) OVER (
-            PARTITION BY salesperson_id 
-            ORDER BY biweekly_period 
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) AS ytd_draw_paid,
-        -- Ensure draw doesn't exceed $75K
-        LEAST(75000, SUM(biweekly_draw) OVER (
-            PARTITION BY salesperson_id 
-            ORDER BY biweekly_period 
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )) AS capped_ytd_draw
-    FROM biweekly_calc
-)
-*/
+ )
+select * from pay_period_amount
