@@ -12,6 +12,8 @@ commission_tier AS (
         base_response.recruiter_name,
         base_response.due_date,
         base_response.invoice_amount,
+        base_response.recruiter_credit_percentage,
+        base_response.job_order_number,
         base_response.credit_amount,
         base_response.running_total,
         commission_config.commission_tier,
@@ -34,7 +36,7 @@ commission_tier AS (
     SELECT 
     {{ dbt_utils.generate_surrogate_key(['form_response_combine_pk', 'commission_row_number']) }} as commission_pk
     ,form_response_combine_pk as form_response_combine_fk
-    ,recruiter_name as recruiter_name
+    ,recruiter_name 
     ,due_date
     ,invoice_amount
     ,credit_amount
@@ -44,9 +46,12 @@ commission_tier AS (
     ,commission_percentage
     ,tier_amount
     ,tier_commission
+    ,recruiter_credit_percentage
+    ,job_order_number
+    ,    CONCAT('Job Order Number: ', job_order_number, ' ', STRING_AGG(CONCAT(recruiter_name, ' ', recruiter_credit_percentage), ', ')) AS job_summary
 FROM commission_tier
 )
 select 
 *
 from final
-  where recruiter_name = 'Daniel Burke'
+order by job_order_number

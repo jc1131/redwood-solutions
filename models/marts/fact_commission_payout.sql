@@ -1,11 +1,4 @@
-with int_commission as (
-    select * from {{ ref('int_commission') }}
-), 
-int_bonus as (
-    select * from {{ ref('int_bonus') }}
-),
-combine_compensation as (
-
+ /*
     SELECT
     form_response_combine_fk,
     NULL AS last_modified_date,
@@ -23,10 +16,4 @@ combine_compensation as (
     NULL AS date_paid,
     NULL AS notes,
 
-    from int_commission
-    group by all
-)
-
-select * from combine_compensation
-where recruiter_name = 'Daniel Burke'
-order by 3,7 asc
+    */
