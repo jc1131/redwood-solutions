@@ -50,6 +50,7 @@ commission_tier AS (
     ,job_order_number
     ,    CONCAT('Job Order Number: ', job_order_number, ' ', STRING_AGG(CONCAT(recruiter_name, ' ', recruiter_credit_percentage), ', ')) AS job_summary
 FROM commission_tier
+group by all
 )
 select 
 *

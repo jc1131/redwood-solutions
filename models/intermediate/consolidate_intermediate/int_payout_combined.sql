@@ -37,4 +37,3 @@ combine_compensation as (
 )
 
 select * from combine_compensation
-where recruiter_name = 'Daniel Burke'
