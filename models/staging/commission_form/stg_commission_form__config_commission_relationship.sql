@@ -9,10 +9,10 @@ source as (
 renamed as (
 
     select
-        primary_employee__name,
-        primary_employee_email,
-        secondary_employee_name,
-        secondary__employee_email,
+        primary_employee__name as primary_recruiter_name,
+        primary_employee_email as primary_recruiter_email,
+        secondary_employee_name as secondary_recruiter_name,
+        secondary__employee_email as secondary_recruiter_email,
         commission_rate,
         commission_hold_days,
         effective_from,
@@ -21,8 +21,7 @@ renamed as (
 
     from source
 
-),
-
+),    
 pk_generation as (
     select
     {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as config_commission_relationship_pk

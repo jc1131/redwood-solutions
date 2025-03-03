@@ -43,3 +43,12 @@ models:
         tests:
           - unique
           - not_null
+
+  - name: stg_commission_form__form_activity
+    description: "Staging model for the form_activity table, consolidating activity bonus data."
+    columns:
+      - name: form_activity_pk
+        description: "Primary key of the staged form_activity table."
+        tests:
+          - unique
+          - not_null          
