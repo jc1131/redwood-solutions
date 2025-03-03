@@ -25,9 +25,10 @@ form_payout as (
 )
 
 select
- form_combine.form_response_combine_pk,
+ 
+    coalesce(form_payout.commission_pk,form_combine.form_response_combine_pk) AS payout_pk,
     form_combine.last_modified AS last_modified_date,
-    form_combine.recruiter_name as recruiter_name,
+    coalesce(form_payout.recruiter_name,form_combine.recruiter_name) as recruiter_name,
     form_combine.job_order_number AS job_number,
     form_combine.client_name AS company,
     form_combine.candidate_name AS candidate_name,
@@ -36,10 +37,8 @@ select
     form_payout.commission_percentage AS commission_percentage,
     form_payout.commission_amount AS commission_amount,
     form_payout.other_comm_and_bonus AS other_comm_and_bonus,
-    form_payout.due_date AS due_date,
+    coalesce(form_payout.due_date,form_combine.due_date) as due_date,
     NULL AS date_paid,
-    NULL AS notes,
-    payout_description,
-    form_detail_description,
-from form_combine
-    left join form_payout on form_combine.form_response_combine_pk = form_payout.form_response_combine_fk
+    coalesce(payout_description,form_detail_description) AS notes,
+from form_payout
+    left join form_combine on form_combine.form_response_combine_pk = form_payout.form_response_combine_fk
