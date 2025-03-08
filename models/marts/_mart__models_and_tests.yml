@@ -1,0 +1,17 @@
+models:
+  - name: fact_draw_payout
+    description: "Mart model for transforming raw draw data from the config_draw table, standardizing it for accurate draw calculations and analysis."
+    columns:
+      - name: draw_pk
+        description: "Unique identifier (primary key) for each draw record in the staged config_bonus table."
+        tests:
+          - unique
+          - not_null
+  - name: fact_commission_payout
+    description: "Mart model for transforming raw draw data from the config_draw table, standardizing it for accurate draw calculations and analysis."
+    columns:
+      - name: payout_pk
+        description: "Unique identifier (primary key) for each draw record in the staged config_bonus table."
+        tests:
+          - unique
+          - not_null
