@@ -54,7 +54,7 @@ secondary_bonus AS (
         DATE_ADD(work_start_date, INTERVAL commission_hold_days DAY)
             AS bonus_pay_date,
         config_commission_relationship.commission_rate
-        * invoice_amount AS bonus_amount,
+        * credit_amount AS bonus_amount,
         CONCAT(
             FORMAT('%g', config_commission_relationship.commission_rate * 100),
             '% commission from ',
