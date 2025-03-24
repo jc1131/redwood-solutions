@@ -46,7 +46,7 @@ bonus_configuration AS (
 ),
 
 secondary_bonus AS (
-    SELECT
+    SELECT distinct 
         {{ dbt_utils.generate_surrogate_key(['config_commission_relationship.config_commission_relationship_pk', 'job_order_number']) }}
             AS secondary_bonus_pk,
         config_commission_relationship.secondary_recruiter_name
@@ -63,9 +63,8 @@ secondary_bonus AS (
             ' (Start Date: ', work_start_date,
             ', Hold Days: ', commission_hold_days
         ) AS bonus_description
-
     FROM base_response
-    LEFT JOIN
+    JOIN
         config_commission_relationship
         ON
             base_response.recruiter_email
