@@ -8,17 +8,16 @@ combine_compensation as (
 
     SELECT
     commission_pk,
-    form_response_combine_fk,
+    form_response_fk,
     recruiter_name as recruiter_name,
     due_date AS due_date,
     invoice_amount AS invoice_amount,
-    SUM(invoice_amount) OVER (PARTITION BY recruiter_name ORDER BY due_date) AS total_invoice_ytd,
-    commission_percentage AS commission_percentage,
-    sum(tier_commission) AS commission_amount,
+    total_commission_sales AS total_invoice_ytd,
+    invoice_credit_percent AS commission_percentage,
+    commission AS commission_amount,
     NULL AS other_comm_and_bonus,
-    concat('Commission Sale: ',job_summary) as payout_description
+    concat('Commission Sale: ',form_detail_description) as payout_description
     from int_commission
-    group by all
 
     union all
 
