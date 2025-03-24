@@ -16,6 +16,7 @@ commission_tier AS (
         base_response.job_order_number,
         base_response.credit_amount,
         base_response.running_total,
+        base_response.job_order_role,
         commission_config.commission_tier,
         commission_config.lower_amount,
         commission_config.higher_amount,
@@ -48,7 +49,7 @@ commission_tier AS (
     ,tier_commission
     ,recruiter_credit_percentage
     ,job_order_number
-    ,    CONCAT('Job Order Number: ', job_order_number, ' ', STRING_AGG(CONCAT(recruiter_name, ' ', recruiter_credit_percentage), ', ')) AS job_summary
+    ,    CONCAT('Job Order Number: ', job_order_number, ' ', STRING_AGG(CONCAT(recruiter_name, ' ', recruiter_credit_percentage, ' ',job_order_role), ', ')) AS job_summary
 FROM commission_tier
 group by all
 )

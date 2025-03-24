@@ -16,7 +16,7 @@ combine_compensation as (
     commission_percentage AS commission_percentage,
     sum(tier_commission) AS commission_amount,
     NULL AS other_comm_and_bonus,
-    'Commission Sale' as payout_description
+    concat('Commission Sale: ',job_summary) as payout_description
     from int_commission
     group by all
 
