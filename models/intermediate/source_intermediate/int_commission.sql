@@ -61,7 +61,7 @@ commission_calc_base.*
   group by all
 ),pk_generation as (
     select 
-    {{ dbt_utils.generate_surrogate_key(['form_response_fk', 'commission_number']) }} as commission_pk,
+    {{ dbt_utils.generate_surrogate_key(['form_response_fk', 'recruiter_email','commission_number']) }} as commission_pk,
     *
  from final
 )
