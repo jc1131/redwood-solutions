@@ -1,59 +1,68 @@
-WITH base_response AS (
-    SELECT * FROM {{ ref('int_response_combined') }}
+WITH commission_calc_base_line AS (
+    SELECT * FROM {{ ref('int_response_detail') }}
 ),
-commission_config AS (
-    SELECT * 
-    FROM {{ ref('stg_commission_form__config_commission') }}
+commission_calc_base_header AS (
+    SELECT * FROM {{ ref('int_response_header') }}
+),commission_config AS (
+    SELECT * FROM {{ ref('stg_commission_form__config_commission') }}
 ),
-commission_tier AS (
-    SELECT 
-        base_response.form_response_combine_pk,
-        ROW_NUMBER() OVER (partition by form_response_combine_pk ORDER BY form_response_combine_pk) AS commission_row_number,  -- Add row number here
-        base_response.recruiter_name,
-        base_response.due_date,
-        base_response.invoice_amount,
-        base_response.recruiter_credit_percentage,
-        base_response.job_order_number,
-        base_response.credit_amount,
-        base_response.running_total,
-        base_response.job_order_role,
-        commission_config.commission_tier,
-        commission_config.lower_amount,
-        commission_config.higher_amount,
-        commission_config.commission_percentage,
-        -- Calculate the tier amount
-        LEAST(base_response.running_total, commission_config.higher_amount) 
-          - GREATEST(base_response.running_total - base_response.credit_amount, commission_config.lower_amount) AS tier_amount,
-        -- Calculate the commission for this tier
-        (LEAST(base_response.running_total, commission_config.higher_amount) 
-          - GREATEST(base_response.running_total - base_response.credit_amount, commission_config.lower_amount)) 
-          * commission_config.commission_percentage AS tier_commission
-    FROM base_response
-    JOIN commission_config 
-      ON base_response.running_total >= commission_config.lower_amount 
-      AND base_response.running_total - base_response.credit_amount <= commission_config.higher_amount
-      AND base_response.recruiter_email = commission_config.employee_email
-), final as (
-    SELECT 
-    {{ dbt_utils.generate_surrogate_key(['form_response_combine_pk', 'commission_row_number']) }} as commission_pk
-    ,form_response_combine_pk as form_response_combine_fk
-    ,recruiter_name 
-    ,due_date
-    ,invoice_amount
-    ,credit_amount
-    ,running_total
-    ,lower_amount
-    ,higher_amount
-    ,commission_percentage
-    ,tier_amount
-    ,tier_commission
-    ,recruiter_credit_percentage
-    ,job_order_number
-    ,    CONCAT('Job Order Number: ', job_order_number, ' ', STRING_AGG(CONCAT(recruiter_name, ' ', recruiter_credit_percentage, ' ',job_order_role), ', ')) AS job_summary
-FROM commission_tier
-group by all
-)
+deal_side_agg as (
+  select
+    form_response_fk
+    ,recruiter_name
+    ,recruiter_email
+    ,sum(recruiter_credit_percentage) as invoice_credit_percent
+    ,STRING_AGG( distinct form_detail_description) as form_detail_description
+  from commission_calc_base_line
+  group by all
+),
+commission_calc_base as (
+  select
+ header.invoice_amount
+  ,header.job_order_number 
+  ,header.due_date
+  ,agg.*
+  ,agg.invoice_credit_percent * header.invoice_amount as invoive_credit_amount
+  ,SUM(agg.invoice_credit_percent * header.invoice_amount) OVER (PARTITION BY recruiter_email order by header.due_date asc) as total_commission_sales
+
+  from deal_side_agg agg
+    left join commission_calc_base_header header
+      on agg.form_response_fk = header.form_response_pk
+),
+tier_calc_base as (
 select 
-*
-from final
-order by job_order_number
+commission_calc_base.*,
+  commission_config.commission_tier,
+  commission_config.lower_amount,
+  commission_config.higher_amount,
+  commission_config.commission_percentage,
+  -- Calculate the tier amount
+  LEAST(commission_calc_base.total_commission_sales, commission_config.higher_amount) 
+    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount, commission_config.lower_amount) AS tier_amount,
+  -- Calculate the commission for this tier
+  (LEAST(commission_calc_base.total_commission_sales, commission_config.higher_amount) 
+    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount, commission_config.lower_amount)) 
+    * commission_config.commission_percentage AS tier_commission
+FROM commission_calc_base
+    JOIN commission_config 
+      ON commission_calc_base.total_commission_sales >= commission_config.lower_amount 
+      AND commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount <= commission_config.higher_amount
+      AND commission_calc_base.recruiter_email = commission_config.employee_email
+),
+final as (
+  select
+commission_calc_base.*
+,sum(cast(tier_calc_base.tier_commission as numeric)) as commission
+,row_number() OVER (PARTITION BY commission_calc_base.recruiter_email order by commission_calc_base.due_date asc) as commission_number
+
+  from commission_calc_base
+  left join tier_calc_base on commission_calc_base.form_response_fk = tier_calc_base.form_response_fk
+  and commission_calc_base.recruiter_email = tier_calc_base.recruiter_email
+  group by all
+),pk_generation as (
+    select 
+    {{ dbt_utils.generate_surrogate_key(['form_response_fk', 'commission_number']) }} as commission_pk,
+    *
+ from final
+)
+select * from pk_generation
