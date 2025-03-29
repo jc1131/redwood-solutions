@@ -13,6 +13,7 @@ select
             AS recruiter_name,
         config_commission_relationship.commission_rate
         * invoice_credit_amount AS bonus_amount,
+        config_commission_relationship.commission_hold_days
     FROM base_commission
     JOIN
         config_commission_relationship
