@@ -22,7 +22,7 @@ commission_calc_base as (
   ,header.job_order_number 
   ,header.due_date
   ,agg.*
-  ,agg.invoice_credit_percent * header.invoice_amount as invoive_credit_amount
+  ,agg.invoice_credit_percent * header.invoice_amount as invoice_credit_amount
   ,SUM(agg.invoice_credit_percent * header.invoice_amount) OVER (PARTITION BY recruiter_email order by header.due_date asc) as total_commission_sales
 
   from deal_side_agg agg
@@ -38,15 +38,15 @@ commission_calc_base.*,
   commission_config.commission_percentage,
   -- Calculate the tier amount
   LEAST(commission_calc_base.total_commission_sales, commission_config.higher_amount) 
-    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount, commission_config.lower_amount) AS tier_amount,
+    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoice_credit_amount, commission_config.lower_amount) AS tier_amount,
   -- Calculate the commission for this tier
   (LEAST(commission_calc_base.total_commission_sales, commission_config.higher_amount) 
-    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount, commission_config.lower_amount)) 
+    - GREATEST(commission_calc_base.total_commission_sales - commission_calc_base.invoice_credit_amount, commission_config.lower_amount)) 
     * commission_config.commission_percentage AS tier_commission
 FROM commission_calc_base
     JOIN commission_config 
       ON commission_calc_base.total_commission_sales >= commission_config.lower_amount 
-      AND commission_calc_base.total_commission_sales - commission_calc_base.invoive_credit_amount <= commission_config.higher_amount
+      AND commission_calc_base.total_commission_sales - commission_calc_base.invoice_credit_amount <= commission_config.higher_amount
       AND commission_calc_base.recruiter_email = commission_config.employee_email
 ),
 final as (
