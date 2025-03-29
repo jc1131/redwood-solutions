@@ -1,5 +1,5 @@
 WITH base_response AS (
-    SELECT * FROM {{ ref('int_response_combined') }}
+    SELECT * FROM {{ ref('int_commission') }}
 ),
 
 base_activity as (

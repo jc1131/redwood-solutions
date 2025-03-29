@@ -27,7 +27,7 @@ renamed as (
         offer_signature_date,
         invoice_payment_terms,
         cast(REGEXP_EXTRACT(invoice_payment_terms, r'\b\d+\b') as int) AS payment_term_number,
-        invoice_payment_date,
+        Reference_Date_for_Terms as invoice_payment_date,
         agreement_job_order_percentage,
         agreement_job_order_recruiter,
         account_manager_percentage,
