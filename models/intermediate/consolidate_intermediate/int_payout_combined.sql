@@ -10,7 +10,8 @@ combine_compensation as (
     commission_pk,
     form_response_fk,
     recruiter_name as recruiter_name,
-    due_date AS due_date,
+    due_date as invoice_payment_date,
+    commission_pay_date as commission_pay_date,
     invoice_amount AS invoice_amount,
     total_commission_sales AS total_invoice_ytd,
     invoice_credit_percent AS commission_percentage,
@@ -25,7 +26,8 @@ combine_compensation as (
     bonus_pk 
     ,null as form_response_combine_fk
     ,recruiter_name
-    ,bonus_pay_date as due_date
+    ,null as invoice_payment_date
+    ,bonus_pay_date as commission_pay_date
     ,null as invoice_amount
     ,null AS total_invoice_ytd
     ,null as commission_percentage

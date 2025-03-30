@@ -46,4 +46,4 @@ SELECT
 FROM bonus_agg
 )
 select * from final
---where payout_amount > 0
+where payout_amount > 0

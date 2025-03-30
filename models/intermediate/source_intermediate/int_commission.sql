@@ -5,7 +5,12 @@ commission_calc_base_header AS (
     SELECT * FROM {{ ref('int_response_header') }}
 ),commission_config AS (
     SELECT * FROM {{ ref('stg_commission_form__config_commission') }}
+),payment_date as (
+    select * from {{ ref('stg_commission_form__form_payment') }}
+),config_commission_relationship as (
+    select * from {{ ref('stg_commission_form__config_commission_relationship') }}
 ),
+
 deal_side_agg as (
   select
     form_response_fk
@@ -49,7 +54,7 @@ FROM commission_calc_base
       AND commission_calc_base.total_commission_sales - commission_calc_base.invoice_credit_amount <= commission_config.higher_amount
       AND commission_calc_base.recruiter_email = commission_config.employee_email
 ),
-final as (
+commission_agg as (
   select
 commission_calc_base.*
 ,sum(cast(tier_calc_base.tier_commission as numeric)) as commission
@@ -59,6 +64,27 @@ commission_calc_base.*
   left join tier_calc_base on commission_calc_base.form_response_fk = tier_calc_base.form_response_fk
   and commission_calc_base.recruiter_email = tier_calc_base.recruiter_email
   group by all
+),final as (
+    select
+    commission_agg.*
+    ,case 
+        when config_commission_relationship.commission_hold_days > 0 then 
+    date_add(due_date,interval config_commission_relationship.commission_hold_days day) 
+        when config_commission_relationship.commission_hold_days = 0 then 
+        payment_date.payment_received_date
+        else due_date end as commission_pay_date
+    from commission_agg
+    left join config_commission_relationship
+        ON
+            commission_agg.recruiter_email
+            = config_commission_relationship.primary_recruiter_email
+    left join payment_date
+        ON
+            commission_agg.recruiter_name
+            = payment_date.recruiter_name
+        and payment_date.job_order_number = commission_agg.job_order_number
+    
+    
 ),pk_generation as (
     select 
     {{ dbt_utils.generate_surrogate_key(['form_response_fk', 'recruiter_email','commission_number']) }} as commission_pk,
