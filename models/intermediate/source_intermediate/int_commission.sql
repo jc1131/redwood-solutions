@@ -70,9 +70,11 @@ commission_calc_base.*
     ,case 
         when config_commission_relationship.commission_hold_days > 0 then 
     date_add(due_date,interval config_commission_relationship.commission_hold_days day) 
-        when config_commission_relationship.commission_hold_days = 0 then 
+        when config_commission_relationship.commission_hold_days = -1 then 
         payment_date.payment_received_date
-        else due_date end as commission_pay_date
+        when config_commission_relationship.commission_hold_days = 0 then 
+        due_date 
+        else '1900-01-01' end as commission_pay_date
     from commission_agg
     left join config_commission_relationship
         ON
