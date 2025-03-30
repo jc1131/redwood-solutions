@@ -9,7 +9,14 @@ activity_bonus as (
     select * from {{ ref('int_activity_commission') }}
 )
 ,combine_bonus AS (
-    SELECT * FROM secondary_bonus
+    SELECT 
+    secondary_bonus_pk
+    ,form_response_fk
+    ,recruiter_name
+    ,bonus_amount
+    ,commission_hold_days
+    
+     FROM secondary_bonus
     UNION ALL
     SELECT * FROM primary_bonus
     UNION ALL
