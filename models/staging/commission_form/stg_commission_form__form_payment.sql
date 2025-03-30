@@ -20,8 +20,8 @@ renamed as (
 ), pk_generation as (
     select
         {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as form_payment_pk
-
+        ,*
     from renamed
 )
 
-select * from renamed
+select * from pk_generation

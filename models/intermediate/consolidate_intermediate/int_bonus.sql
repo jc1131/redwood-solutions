@@ -11,16 +11,31 @@ activity_bonus as (
 ,combine_bonus AS (
     SELECT 
     secondary_bonus_pk
-    ,form_response_fk
     ,recruiter_name
     ,bonus_amount
-    ,commission_hold_days
+    ,bonus_pay_date
+    ,bonus_description
     
      FROM secondary_bonus
     UNION ALL
-    SELECT * FROM primary_bonus
+    SELECT 
+    config_bonus_pk
+    ,employee_name
+    ,payout_amount
+    ,bonus_end_date
+    ,bonus_description
+    
+    FROM primary_bonus
     UNION ALL
-    select * from activity_bonus
+    select 
+    form_activity_pk
+    ,activity_bonus_recipient
+    ,bonus_amount
+    ,bonus_pay_date
+    ,bonus_description
+    
+    
+     from activity_bonus
 ),final as (
     select
     secondary_bonus_pk as bonus_pk 
