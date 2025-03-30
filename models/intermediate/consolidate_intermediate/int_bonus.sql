@@ -1,12 +1,12 @@
 WITH secondary_bonus AS (
-select * from secondary_bonus
+select * from {{ ref('int_secondary_commission') }}
 )
 ,
 primary_bonus as (
-    select * from primary_bonus
+    select * from {{ ref('int_bonus_commission') }}
 ),
 activity_bonus as (
-    select * from activity_bonus
+    select * from {{ ref('int_activity_commission') }}
 )
 ,combine_bonus AS (
     SELECT * FROM secondary_bonus
