@@ -1,39 +1,39 @@
 WITH base_commission AS (
     SELECT * FROM {{ ref('int_commission') }}
-),bonus_configuration AS (
+), bonus_configuration AS (
     SELECT * FROM {{ ref('stg_commission_form__config_bonus') }}
-),
-combine_bonus_sale AS (
-    SELECT
-        config_bonus_pk,
-        bonus_configuration.employee_email AS recruiter_email,
-        bonus_configuration.employee_name AS recruiter_name,
-        bonus_configuration.bonus_plan,
-        bonus_configuration.bonus_threshold,
-        bonus_configuration.bonus_amount,
-        bonus_configuration.bonus_start_date,
-        bonus_configuration.bonus_end_date,
-        base_commission.due_date,
-        base_commission.total_commission_sales,
+), bonus_agg AS (
+    SELECT 
+        s.recruiter_email,
+        b.config_bonus_pk,
+        b.bonus_plan,
+        b.bonus_start_date,
+        b.bonus_end_date,
+        b.bonus_threshold,
+        b.bonus_amount,
+        SUM(s.invoice_credit_amount) AS total_sales
+    FROM base_commission s
+    JOIN bonus_configuration b 
+        ON s.recruiter_email = b.employee_email
+        AND s.due_date BETWEEN b.bonus_start_date AND b.bonus_end_date
+    GROUP BY 
+        all
+), final as (
 
- 
-
-    FROM bonus_configuration
-    INNER JOIN base_commission ON
-        bonus_configuration.employee_email = base_commission.recruiter_email
-        AND base_commission.due_date BETWEEN bonus_configuration.bonus_start_date AND bonus_configuration.bonus_end_date
+SELECT 
+    recruiter_email,
+    config_bonus_pk,
+    bonus_plan,
+    bonus_start_date,
+    bonus_end_date,
+    bonus_threshold,
+    bonus_amount,
+    total_sales,
+    CASE 
+        WHEN total_sales >= bonus_threshold THEN bonus_amount
+        ELSE 0
+    END AS payout_amount
+FROM bonus_agg
 )
-    SELECT
-        config_bonus_pk AS primary_bonus_pk,
-        recruiter_name,
-        CASE
-            WHEN total_commission_sales >= bonus_threshold THEN due_date
-            ELSE bonus_end_date
-        END AS bonus_pay_date,
-        CASE
-            WHEN total_commission_sales >= bonus_threshold THEN bonus_amount
-            ELSE 0
-        END AS bonus_amount,
-        CONCAT(bonus_plan, ' payout') AS bonus_description
-    FROM combine_bonus_sale
-where bonus_amount > 0
+select * from final
+where payout_amount > 0
