@@ -7,10 +7,10 @@ models:
         tests:
           - unique
           - not_null
-  - name: fact_commission_payout
+  - name: fact_payout
     description: "Mart model for transforming raw draw data from the config_draw table, standardizing it for accurate draw calculations and analysis."
     columns:
-      - name: payout_pk
+      - name: commission_pk
         description: "Unique identifier (primary key) for each draw record in the staged config_bonus table."
         tests:
           - unique
