@@ -7,6 +7,14 @@ models:
         tests:
           - unique
           - not_null
+  - name: int_secondary_commission
+    description: "Intermediate model for transforming raw bonus data from the config_bonus table, standardizing it for accurate bonus calculations and analysis."
+    columns:
+      - name: secondary_bonus_pk
+        description: "Unique identifier (primary key) for each bonus record in the staged config_bonus table."
+        tests:
+          - unique
+          - not_null
 
   - name: int_commission
     description: "Intermediate model for preparing commission data from the config_commission table, ensuring data integrity for reporting and analysis."

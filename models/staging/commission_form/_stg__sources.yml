@@ -16,3 +16,5 @@ sources:
         description: "Table capturing responses from commission-related forms, including input from sales reps or administrators."
       - name: form_activity
         description: "Table used for monthly activity bonus tracking"
+      - name: form_payment
+        description: "Table used for payment received tracking"
