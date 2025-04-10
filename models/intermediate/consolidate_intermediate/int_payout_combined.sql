@@ -13,7 +13,8 @@ combine_compensation as (
     due_date as invoice_payment_date,
     commission_pay_date as commission_pay_date,
     invoice_amount AS invoice_amount,
-    total_commission_sales AS total_invoice_ytd,
+    total_invoice_ytd,
+    total_commission_sales,
     invoice_credit_percent AS commission_percentage,
     commission AS commission_amount,
     NULL AS other_comm_and_bonus,
@@ -30,6 +31,7 @@ combine_compensation as (
     ,bonus_pay_date as commission_pay_date
     ,null as invoice_amount
     ,null AS total_invoice_ytd
+    ,null as total_commission_sales
     ,null as commission_percentage
     ,null as commission_amount
     ,bonus_amount as other_comm_and_bonus

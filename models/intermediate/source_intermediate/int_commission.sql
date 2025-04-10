@@ -29,6 +29,7 @@ commission_calc_base as (
   ,agg.*
   ,agg.invoice_credit_percent * header.invoice_amount as invoice_credit_amount
   ,SUM(agg.invoice_credit_percent * header.invoice_amount) OVER (PARTITION BY recruiter_email order by header.due_date asc) as total_commission_sales
+  ,SUM(header.invoice_amount) OVER (PARTITION BY recruiter_email order by header.due_date asc) as total_invoice_ytd
 
   from deal_side_agg agg
     left join commission_calc_base_header header
