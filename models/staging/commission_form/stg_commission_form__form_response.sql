@@ -22,7 +22,7 @@ renamed as (
         client_hiring_manager,
         billing_percentage_rate,
         candidate_s_base_salary as candidate_base_salary,
-        Invoice_Amount as invoice_amount,
+        billing_percentage_rate * candidate_s_base_salary as invoice_amount,
         work_start_date,
         offer_signature_date,
         invoice_payment_terms,
