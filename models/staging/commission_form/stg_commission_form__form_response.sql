@@ -3,7 +3,7 @@ with
 source as (
 
     select * from {{ source('commission_form', 'form_response') }}
-
+QUALIFY ROW_NUMBER() OVER (PARTITION BY job_order_number ORDER BY last_modified DESC) = 1
 ),
 
 renamed as (
