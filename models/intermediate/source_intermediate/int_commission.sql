@@ -69,6 +69,8 @@ commission_calc_base.*
     select
     commission_agg.*
     ,case 
+    when payment_date.payment_received_date is not null then 
+        payment_date.payment_received_date
     when config_commission_relationship.commission_hold_days > 0 and header.client_name = 'FullBloom' then 
     date_add(commission_agg.due_date,interval 120 day) 
         when config_commission_relationship.commission_hold_days > 0 then 
