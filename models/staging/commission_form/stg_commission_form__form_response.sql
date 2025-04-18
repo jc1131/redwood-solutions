@@ -3,7 +3,6 @@ with
 source as (
 
     select * from {{ source('commission_form', 'form_response') }}
-
 ),
 
 renamed as (
@@ -53,6 +52,8 @@ pk_generation as (
     {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as form_response_pk
     ,*
     from renamed
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY job_order_number ORDER BY last_modified DESC) = 1
+
 )
 
 select * from pk_generation

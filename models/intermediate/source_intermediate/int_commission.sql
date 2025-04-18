@@ -69,12 +69,16 @@ commission_calc_base.*
     select
     commission_agg.*
     ,case 
+    when config_commission_relationship.commission_hold_days > 0 and header.client_name = 'FullBloom' then 
+    date_add(commission_agg.due_date,interval 120 day) 
         when config_commission_relationship.commission_hold_days > 0 then 
-    date_add(due_date,interval config_commission_relationship.commission_hold_days day) 
+    date_add(commission_agg.due_date,interval config_commission_relationship.commission_hold_days day) 
+        when config_commission_relationship.commission_hold_days > 0 then 
+    date_add(commission_agg.due_date,interval config_commission_relationship.commission_hold_days day) 
         when config_commission_relationship.commission_hold_days = -1 then 
         payment_date.payment_received_date
         when config_commission_relationship.commission_hold_days = 0 then 
-        due_date 
+        commission_agg.due_date 
         else '1900-01-01' end as commission_pay_date
     from commission_agg
     left join config_commission_relationship
@@ -86,7 +90,8 @@ commission_calc_base.*
             commission_agg.recruiter_name
             = payment_date.recruiter_name
         and payment_date.job_order_number = commission_agg.job_order_number
-    
+    left join commission_calc_base_header header
+      on commission_agg.form_response_fk = header.form_response_pk
     
 ),pk_generation as (
     select 
