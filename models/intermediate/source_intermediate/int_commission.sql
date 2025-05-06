@@ -101,4 +101,4 @@ commission_calc_base.*
     *
  from final
 )
-select * from pk_generation
+select distinct * from pk_generation -- fix later
