@@ -54,8 +54,8 @@ aggregated as (
         recruiter_name,
         recruiter_email,
         is_valid_split,
-        sum(credit_percentage)              as invoice_credit_percent,
-        sum(credit_amount)                  as invoice_credit_amount,
+        sum(credit_percentage)               as invoice_credit_percent,
+        sum(credit_amount)                   as invoice_credit_amount,
         string_agg(split_description, ' | ') as form_detail_description
     from invoice_detail
     group by all
@@ -125,19 +125,31 @@ commission_summed as (
 
     select
         with_ytd.*,
-        sum(cast(tier_slices.tier_commission as numeric))           as commission,
-        -- Effective blended rate = commission earned / recruiter's credited amount.
-        -- Uses safe_divide to handle edge case of zero credit amount.
-        -- Correctly reflects blended rate when an invoice straddles a tier boundary.
-        safe_divide(
-            sum(cast(tier_slices.tier_commission as numeric)),
-            with_ytd.invoice_credit_amount
-        )                                                           as effective_commission_rate
+        sum(cast(tier_slices.tier_commission as numeric))           as commission
     from with_ytd
     left join tier_slices
         on  with_ytd.form_response_pk   = tier_slices.form_response_pk
         and with_ytd.recruiter_email    = tier_slices.recruiter_email
     group by all
+
+),
+
+-- Point-in-time tier lookup: which band does total_commission_sales fall into
+-- for this specific invoice? total_commission_sales is already locked by the
+-- window function in with_ytd so this reflects the tier at the exact moment
+-- this invoice was processed — it will not shift if future invoices push the
+-- recruiter into a higher tier.
+tier_at_time_of_invoice as (
+
+    select
+        commission_summed.form_response_pk,
+        commission_summed.recruiter_email,
+        commission_config.commission_percentage                     as current_tier_rate
+    from commission_summed
+    join commission_config
+        on  commission_summed.recruiter_email           = commission_config.employee_email
+        and commission_summed.total_commission_sales    >= commission_config.lower_amount
+        and commission_summed.total_commission_sales    <= commission_config.higher_amount
 
 ),
 
@@ -148,6 +160,7 @@ with_pay_date as (
 
     select
         commission_summed.*,
+        tier_at_time_of_invoice.current_tier_rate,
         commission_relationship.config_commission_relationship_pk,
         commission_relationship.commission_hold_days,
         commission_relationship.secondary_recruiter_name,
@@ -172,6 +185,9 @@ with_pay_date as (
         end                                                         as commission_pay_date,
         payment.payment_received_date
     from commission_summed
+    left join tier_at_time_of_invoice
+        on  commission_summed.form_response_pk  = tier_at_time_of_invoice.form_response_pk
+        and commission_summed.recruiter_email   = tier_at_time_of_invoice.recruiter_email
     left join commission_relationship
         on  commission_summed.recruiter_email
             = commission_relationship.primary_recruiter_email
