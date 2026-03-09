@@ -2,11 +2,8 @@
   int_payout
   ──────────
   Grain  : one row per payout event (commission or bonus) per recruiter.
-  Sources: int_commission
-           int_bonus
-
-  Single union point in the DAG. Combines commission and bonus streams,
-  padding NULLs so both shapes share one column schema.
+  Sources: int_commission, int_bonus
+  Single union point in the DAG.
 */
 
 with commission_data as (
@@ -34,7 +31,7 @@ commission_rows as (
         cast(commission_data.total_invoice_ytd as numeric)          as total_invoice_ytd,
         cast(commission_data.total_commission_sales as numeric)     as total_commission_sales,
         cast(commission_data.invoice_credit_percent as numeric)     as invoice_credit_percent,
-        cast(commission_data.effective_commission_rate as numeric)  as effective_commission_rate,
+        cast(commission_data.current_tier_rate as numeric)          as current_tier_rate,
         cast(commission_data.commission as numeric)                 as commission_amount,
         cast(null as numeric)                                       as bonus_amount,
         concat('Commission - ', commission_data.form_detail_description) as payout_description,
@@ -63,28 +60,10 @@ bonus_rows as (
         cast(null as numeric)           as total_invoice_ytd,
         cast(null as numeric)           as total_commission_sales,
         cast(null as numeric)           as invoice_credit_percent,
-        cast(null as numeric)           as effective_commission_rate,
+        cast(null as numeric)           as current_tier_rate,
         cast(null as numeric)           as commission_amount,
         cast(bonus_amount as numeric)   as bonus_amount,
         bonus_description               as payout_description,
         cast(null as string)            as job_order_number,
         cast(null as string)            as client_name,
-        cast(null as string)            as candidate_name,
-        cast(null as date)              as due_date,
-        cast(null as timestamp)         as last_modified,
-        cast(null as date)              as payment_received_date,
-        cast(null as bool)              as is_valid_split
-
-    from bonus
-
-),
-
-final as (
-
-    select * from commission_rows
-    union all
-    select * from bonus_rows
-
-)
-
-select * from final
+        cast(nul
