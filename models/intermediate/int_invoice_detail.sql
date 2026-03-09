@@ -103,6 +103,21 @@ unpivoted as (
         'Candidate Ownership'
     from invoice_with_due_date
 
+    union all
+
+    select
+        form_response_pk,
+        job_order_number,
+        client_name,
+        candidate_name,
+        invoice_amount,
+        due_date,
+        last_modified,
+        researcher_percentage,
+        researcher_recruiter,
+        'Researcher'
+    from invoice_with_due_date
+
 ),
 
 active_splits as (
