@@ -66,4 +66,22 @@ bonus_rows as (
         bonus_description               as payout_description,
         cast(null as string)            as job_order_number,
         cast(null as string)            as client_name,
-        cast(nul
+        cast(null as string)            as candidate_name,
+        cast(null as date)              as due_date,
+        cast(null as timestamp)         as last_modified,
+        cast(null as date)              as payment_received_date,
+        cast(null as bool)              as is_valid_split
+
+    from bonus
+
+),
+
+final as (
+
+    select * from commission_rows
+    union all
+    select * from bonus_rows
+
+)
+
+select * from final
