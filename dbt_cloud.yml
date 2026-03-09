@@ -1,0 +1,14 @@
+version: "1"
+context:
+  active-host: "ap512.us1.dbt.com"
+  active-project: "338241"
+projects:
+  - project-name: "Analytics"
+    project-id: "338241"
+    account-name: "Redwood"
+    account-id: "236814"
+    account-host: "ap512.us1.dbt.com"
+    token-name: "cloud-cli-3690"
+    token-value: "dbtu_8kqK1t46450umJurJo-LNFDYCGndalgH0EbLxVQkLJwEBTUYSo"
+
+

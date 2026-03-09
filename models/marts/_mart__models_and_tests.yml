@@ -1,17 +1,71 @@
+version: 2
+
 models:
+
+  - name: dim_date
+    description: >
+      Calendar date dimension spanning 2024-01-01 to 2026-12-31. Enriched with
+      fiscal period columns (dbt_date) and semi-monthly pay cycle columns
+      (pay_date, pay_cycle_start, pay_cycle_end, next_pay_date).
+    columns:
+      - name: date_day
+        description: "Calendar date — primary key."
+        tests: [unique, not_null]
+
+  - name: fact_commission_payout
+    description: >
+      Grain: one row per payout event (commission or bonus) per recruiter.
+      Column order mirrors the 2026 Commission Report output. All business
+      logic is resolved upstream in int_commission, int_bonus, and int_payout.
+      This model joins int_payout to dim_date for the next payroll run date.
+    columns:
+      - name: payout_pk
+        description: "Unique identifier for every payout row."
+        tests: [unique, not_null]
+      - name: payout_type
+        description: "'commission' or 'bonus'."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['commission', 'bonus']
+      - name: recruiter_name
+        description: "Recruiter receiving this payout."
+        tests: [not_null]
+      - name: commission_amount
+        description: "Commission dollars — null for bonus rows."
+      - name: bonus_amount
+        description: "Bonus dollars — null for commission rows."
+      - name: guarantee_period_end
+        description: >
+          Commission pay date as resolved by hold-day rules.
+          Represents the end of the guarantee/hold window
+          ('3 or 4 mo Guarantee Period' in the report).
+      - name: date_paid
+        description: "Next payroll run date on or after guarantee_period_end."
+      - name: is_valid_split
+        description: >
+          Data quality flag: true if all credit splits on the source invoice
+          sum to 100%. Null for bonus rows.
+
   - name: fact_draw_payout
-    description: "Mart model for transforming raw draw data from the config_draw table, standardizing it for accurate draw calculations and analysis."
+    description: >
+      Grain: one row per (employee × semi-monthly pay period) while on a draw plan.
+      Shows the draw deduction, any commission credited in that period, and the
+      running cumulative draw balance.
     columns:
       - name: draw_pk
-        description: "Unique identifier (primary key) for each draw record in the staged config_bonus table."
-        tests:
-          - unique
-          - not_null
-  - name: fact_payout
-    description: "Mart model for transforming raw draw data from the config_draw table, standardizing it for accurate draw calculations and analysis."
-    columns:
-      - name: commission_pk
-        description: "Unique identifier (primary key) for each draw record in the staged config_bonus table."
-        tests:
-          - unique
-          - not_null
+        description: "Surrogate PK derived from config_draw_pk and pay_date."
+        tests: [unique, not_null]
+      - name: recruiter_name
+        description: "Employee on the draw plan."
+        tests: [not_null]
+      - name: due_date
+        description: "Pay period pay date."
+        tests: [not_null]
+      - name: draw_amount
+        description: "Draw deduction for this period (stored as negative)."
+      - name: commission_amount
+        description: "Commission credited this period (0 if none earned)."
+      - name: balance_amount
+        description: "Running cumulative net balance. Negative = draw still owed."

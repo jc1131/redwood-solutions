@@ -1,0 +1,9 @@
+your_profile_name:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: exalted-slate-410901
+      keyfile: /path/to/your/service-account-key.json
+      threads: 4 # Optional, adjust as needed

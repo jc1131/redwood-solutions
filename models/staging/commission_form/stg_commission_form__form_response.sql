@@ -36,10 +36,12 @@ renamed as (
         agreement_job_order_recruiter,
         account_manager_percentage,
         account_manager_recruiter,
-        working_candidate_percentage_ as working_candidate_percentage,
+        working_candidate_percentage_                                   as working_candidate_percentage,
         working_candidate_recruiter,
-        candidate_ownership_percentage_ as candidate_ownership_percentage,
+        candidate_ownership_percentage_                                 as candidate_ownership_percentage,
         candidate_ownership_recruiter,
+        researcher_percentage                                          as researcher_percentage,
+        researcher_recruiter                                           as researcher_recruiter,
       'form_response' as source_key,
         ROW_NUMBER() OVER() source_row_number
 

@@ -29,3 +29,4 @@ pk_generation as (
 )
 
 select * from pk_generation
+where last_modified > '2026-01-01'
