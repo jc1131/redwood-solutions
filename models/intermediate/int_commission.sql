@@ -7,38 +7,11 @@
            stg_commission_form__config_commission_relationship
            stg_commission_form__form_payment
 
-  What this model does
-  ────────────────────
   STEP 1 — AGGREGATE splits to one row per (invoice × recruiter).
-    A recruiter may hold multiple roles on the same invoice
-    (e.g. Agreement/Job Order + Account Manager). We sum their
-    credit_percentage and credit_amount across roles before applying
-    the tier calc, so the recruiter sees one commission row per invoice.
-
   STEP 2 — RUNNING TOTALS per recruiter ordered by due_date.
-    total_commission_sales  = recruiter's cumulative credited $ (YTD)
-    total_invoice_ytd       = recruiter's cumulative gross invoice $ (YTD)
-    These drive which commission tier applies to each invoice.
-
   STEP 3 — TIER CALCULATION via range join to config_commission.
-    For each invoice, one or more tier bands may be "touched" depending
-    on whether the invoice straddles a tier boundary. We compute the
-    dollar amount that falls in each band and the commission earned in
-    that band, then sum back to one row per (invoice × recruiter).
-
-  STEP 4 — PAY DATE RESOLUTION via config_commission_relationship
-    and form_payment. Priority order:
-      1. form_payment.payment_received_date  (explicit receipt override)
-      2. due_date + 120 days                 (FullBloom client hard rule)
-      3. due_date + hold_days                (standard hold)
-      4. payment_received_date               (hold_days = -1, pay on receipt)
-      5. due_date                            (hold_days = 0, pay immediately)
-      6. DATE '1900-01-01'                   (fallback / data-quality signal)
-
-  What this model does NOT do
-  ───────────────────────────
-  - No bonus calculations (all in int_bonus)
-  - No secondary recruiter payouts (in int_bonus)
+  STEP 4 — PAY DATE RESOLUTION via config_commission_relationship and form_payment.
+            Priority: payment received > FullBloom 120d > hold days > pay on receipt > due date > fallback
 */
 
 with invoice_detail as (
@@ -81,14 +54,9 @@ aggregated as (
         recruiter_name,
         recruiter_email,
         is_valid_split,
-
-        -- Sum credit % and $ across all roles this recruiter holds on this invoice
-        sum(credit_percentage)                          as invoice_credit_percent,
-        sum(credit_amount)                              as invoice_credit_amount,
-
-        -- Concatenate role descriptions for the payout description column
-        string_agg(split_description, ' | ')            as form_detail_description
-
+        sum(credit_percentage)              as invoice_credit_percent,
+        sum(credit_amount)                  as invoice_credit_amount,
+        string_agg(split_description, ' | ') as form_detail_description
     from invoice_detail
     group by all
 
@@ -101,73 +69,55 @@ with_ytd as (
 
     select
         *,
-
-        -- Recruiter's cumulative credited sales (used for tier band lookup)
         sum(invoice_credit_amount)
             over (
                 partition by recruiter_email
                 order by due_date asc
                 rows between unbounded preceding and current row
-            )                                           as total_commission_sales,
-
-        -- Recruiter's cumulative gross invoices (displayed on report)
+            )                               as total_commission_sales,
         sum(invoice_amount)
             over (
                 partition by recruiter_email
                 order by due_date asc
                 rows between unbounded preceding and current row
-            )                                           as total_invoice_ytd,
-
-        -- Row number used as part of commission_pk (ensures uniqueness per recruiter)
+            )                               as total_invoice_ytd,
         row_number()
             over (
                 partition by recruiter_email
                 order by due_date asc
-            )                                           as commission_number
-
+            )                               as commission_number
     from aggregated
 
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 3: Tier calculation
--- Range join: every tier band this invoice's running total "touches" produces
--- one row. We then sum tier commissions back to one row per (invoice × recruiter).
 -- ─────────────────────────────────────────────────────────────────────────────
 tier_slices as (
 
     select
         with_ytd.form_response_pk,
         with_ytd.recruiter_email,
-
         commission_config.commission_tier,
-        commission_config.commission_percentage         as tier_rate,
-
-        -- How many dollars of this invoice fall within this tier band?
-        least(with_ytd.total_commission_sales,          commission_config.higher_amount)
+        commission_config.commission_percentage                     as tier_rate,
+        least(with_ytd.total_commission_sales, commission_config.higher_amount)
             - greatest(
                 with_ytd.total_commission_sales - with_ytd.invoice_credit_amount,
                 commission_config.lower_amount
-              )                                         as tier_amount,
-
-        -- Commission dollars earned in this tier for this invoice
+              )                                                     as tier_amount,
         (
-            least(with_ytd.total_commission_sales,      commission_config.higher_amount)
+            least(with_ytd.total_commission_sales, commission_config.higher_amount)
             - greatest(
                 with_ytd.total_commission_sales - with_ytd.invoice_credit_amount,
                 commission_config.lower_amount
               )
-        ) * commission_config.commission_percentage     as tier_commission
-
+        ) * commission_config.commission_percentage                 as tier_commission
     from with_ytd
     join commission_config
-        on  with_ytd.recruiter_email
-                = commission_config.employee_email
-        -- Invoice's running total is inside or straddles this tier band
-        and with_ytd.total_commission_sales
-                >= commission_config.lower_amount
+        on  with_ytd.recruiter_email            = commission_config.employee_email
+        and with_ytd.total_commission_sales     >= commission_config.lower_amount
         and (with_ytd.total_commission_sales - with_ytd.invoice_credit_amount)
-                <= commission_config.higher_amount
+                                                <= commission_config.higher_amount
 
 ),
 
@@ -175,7 +125,14 @@ commission_summed as (
 
     select
         with_ytd.*,
-        sum(cast(tier_slices.tier_commission as numeric))   as commission
+        sum(cast(tier_slices.tier_commission as numeric))           as commission,
+        -- Effective blended rate = commission earned / recruiter's credited amount.
+        -- Uses safe_divide to handle edge case of zero credit amount.
+        -- Correctly reflects blended rate when an invoice straddles a tier boundary.
+        safe_divide(
+            sum(cast(tier_slices.tier_commission as numeric)),
+            with_ytd.invoice_credit_amount
+        )                                                           as effective_commission_rate
     from with_ytd
     left join tier_slices
         on  with_ytd.form_response_pk   = tier_slices.form_response_pk
@@ -195,43 +152,28 @@ with_pay_date as (
         commission_relationship.commission_hold_days,
         commission_relationship.secondary_recruiter_name,
         commission_relationship.secondary_recruiter_email,
-        commission_relationship.commission_rate             as secondary_commission_rate,
-
+        commission_relationship.commission_rate                     as secondary_commission_rate,
         case
-            -- 1. Explicit payment receipt overrides everything
             when payment.payment_received_date is not null
                 then payment.payment_received_date
-
-            -- 2. FullBloom always holds 120 days regardless of hold_days config
             when commission_relationship.commission_hold_days > 0
                 and commission_summed.client_name = 'FullBloom'
                 then date_add(commission_summed.due_date, interval 120 day)
-
-            -- 3. Standard hold: add configured days to due date
             when commission_relationship.commission_hold_days > 0
                 then date_add(
                         commission_summed.due_date,
                         interval commission_relationship.commission_hold_days day
                      )
-
-            -- 4. hold_days = -1 means "pay when client pays us"
             when commission_relationship.commission_hold_days = -1
                 then payment.payment_received_date
-
-            -- 5. hold_days = 0 means pay on due date
             when commission_relationship.commission_hold_days = 0
                 then commission_summed.due_date
-
-            -- 6. Fallback — surface as a data-quality issue
             else date '1900-01-01'
-        end                                                 as commission_pay_date,
-
-        -- Capture actual payment receipt date for the "Date Rcd" report column
+        end                                                         as commission_pay_date,
         payment.payment_received_date
-
     from commission_summed
     left join commission_relationship
-        on commission_summed.recruiter_email
+        on  commission_summed.recruiter_email
             = commission_relationship.primary_recruiter_email
     left join payment
         on  commission_summed.recruiter_name    = payment.recruiter_name
@@ -252,8 +194,6 @@ final as (
         ]) }}               as commission_pk,
         *
     from with_pay_date
-    -- If a recruiter appears in multiple relationship rows (data issue),
-    -- keep the one with the longest hold (most conservative)
     qualify
         row_number() over (
             partition by form_response_pk, recruiter_email
