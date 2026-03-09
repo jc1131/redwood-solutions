@@ -150,6 +150,7 @@ activity_bonuses as (
     from form_activity fa
     left join activity_pay_dates apd
         on apd.month_name = fa.activity_bonus_month
+        where apd.next_pay_date <= current_date()
 
 ),
 
