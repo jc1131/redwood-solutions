@@ -1,6 +1,6 @@
 /*
   int_bonus
-  ─────────
+  ---------
   Grain  : one row per bonus payout event per recruiter.
   Sources: stg_commission_form__config_bonus      (threshold / IT bonuses)
            stg_commission_form__form_activity      (monthly activity bonuses)
@@ -8,37 +8,9 @@
            dim_date                                (activity bonus pay date lookup)
 
   Three bonus types live as named CTEs and are UNION ALL'd at the bottom.
-  Keeping them in one model avoids three separate ephemeral hops while still
-  maintaining readable, independently-understandable sections.
-
-  ┌─────────────────────────────────────────────────────────────┐
-  │ TYPE 1 — Sales / IT threshold bonuses (config_bonus)        │
-  │   Plans: Annual Sales Goal, Quarter Sales Goal,             │
-  │          Quarter IT Assistance                              │
-  │   Logic: join config_bonus to int_commission to measure     │
-  │          actual sales vs threshold. Pay only if met.        │
-  │          IT bonus: always pay if past end_date.             │
-  └─────────────────────────────────────────────────────────────┘
-  ┌─────────────────────────────────────────────────────────────┐
-  │ TYPE 2 — Monthly activity bonus (form_activity)             │
-  │   Fixed $500 per recipient per month.                       │
-  │   Pay date = next semi-monthly pay date for that month.     │
-  └─────────────────────────────────────────────────────────────┘
-  ┌─────────────────────────────────────────────────────────────┐
-  │ TYPE 3 — Secondary recruiter split bonus (int_commission)   │
-  │   For every commission row where a secondary recruiter      │
-  │   exists: bonus = invoice_credit_amount × commission_rate.  │
-  │   Pay date inherits from the primary commission pay date.   │
-  └─────────────────────────────────────────────────────────────┘
 
   Output schema (all types normalised to these columns)
-  ───────────────────────────────────────────────────────
-  bonus_pk          surrogate key
-  recruiter_name    who receives the bonus
-  bonus_pay_date    when it pays out
-  bonus_amount      dollar amount
-  bonus_description human-readable explanation
-  bonus_type        'sales_threshold' | 'activity' | 'secondary_split'
+  bonus_pk, recruiter_name, bonus_pay_date, bonus_amount, bonus_description, bonus_type
 */
 
 with commission as (
@@ -65,15 +37,9 @@ dim_date as (
 
 ),
 
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
 -- TYPE 1: Sales threshold and IT assistance bonuses
--- ─────────────────────────────────────────────────────────────────────────────
-
-/*
-  Separate the two plan types because their evaluation rules differ:
-  - Sales plans  : compare total_commission_sales to bonus_threshold
-  - IT assistance: flat payout, no threshold, triggered by end_date
-*/
+-- -----------------------------------------------------------------------------
 
 sales_bonus_plans as (
 
@@ -89,10 +55,6 @@ it_bonus_plans as (
 
 ),
 
-/*
-  For sales plans: aggregate commission sales within the bonus window
-  and evaluate whether the threshold has been met.
-*/
 sales_bonus_agg as (
 
     select
@@ -123,11 +85,9 @@ sales_bonuses as (
             when actual_sales >= bonus_threshold then bonus_amount
             else 0
         end                                                         as bonus_amount,
-        format(
-            '%s''s %s bonus: threshold $%s %s.',
-            employee_name,
-            bonus_plan,
-            cast(bonus_threshold as string),
+        concat(
+            employee_name, chr(39), 's ', bonus_plan,
+            ' bonus: threshold $', cast(bonus_threshold as string), ' - ',
             case
                 when actual_sales >= bonus_threshold
                     then 'met - payout approved'
@@ -137,7 +97,6 @@ sales_bonuses as (
         'sales_threshold'                                           as bonus_type
 
     from sales_bonus_agg
-    -- Only emit rows where a payout is actually due
     where actual_sales >= bonus_threshold
 
 ),
@@ -153,20 +112,14 @@ it_bonuses as (
         'sales_threshold'                                           as bonus_type
 
     from it_bonus_plans
-    -- Only pay once the bonus period has closed
     where bonus_end_date < current_date()
 
 ),
 
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
 -- TYPE 2: Monthly activity bonuses
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
 
-/*
-  Resolve the next semi-monthly pay date for each calendar month.
-  We use the dim_date table to find the appropriate pay date and
-  take one row per month (the latest next_pay_date in that month).
-*/
 activity_pay_dates as (
 
     select
@@ -191,7 +144,7 @@ activity_bonuses as (
         fa.activity_bonus_recipient                                 as recruiter_name,
         apd.next_pay_date                                           as bonus_pay_date,
         500.00                                                      as bonus_amount,
-        concat(apd.month_name, ' activity bonus — $500')           as bonus_description,
+        concat(apd.month_name, ' activity bonus - $500')            as bonus_description,
         'activity'                                                  as bonus_type
 
     from form_activity fa
@@ -200,9 +153,9 @@ activity_bonuses as (
 
 ),
 
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
 -- TYPE 3: Secondary recruiter split bonuses
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
 
 secondary_bonuses as (
 
@@ -215,7 +168,7 @@ secondary_bonuses as (
         commission_pay_date                                         as bonus_pay_date,
         round(invoice_credit_amount * secondary_commission_rate, 2) as bonus_amount,
         concat(
-            'Secondary split — Job Order #',
+            'Secondary split - Job Order #',
             cast(job_order_number as string),
             ' due ', format_date('%Y-%m-%d', due_date),
             ', paid ', format_date('%Y-%m-%d', commission_pay_date)
@@ -223,14 +176,14 @@ secondary_bonuses as (
         'secondary_split'                                           as bonus_type
 
     from commission
-    -- Only emit rows where a secondary recruiter is configured
     where secondary_recruiter_email is not null
 
 ),
 
--- ─────────────────────────────────────────────────────────────────────────────
--- UNION all three types into one normalised stream
--- ─────────────────────────────────────────────────────────────────────────────
+-- -----------------------------------------------------------------------------
+-- UNION all three types
+-- -----------------------------------------------------------------------------
+
 final as (
 
     select * from sales_bonuses
