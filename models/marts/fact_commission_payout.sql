@@ -2,14 +2,7 @@
   fact_commission_payout
   ──────────────────────
   Grain  : one row per payout event (commission or bonus) per recruiter.
-  Sources: int_payout   (all commissions + bonuses unified)
-           dim_date     (resolves next_pay_date from commission_pay_date)
-
-  Column order mirrors the 2026 Commission Report:
-    Date | Job Order # | Company | Candidate Name | Recruiter |
-    Due Date | Invoice Amt | Commissionable Sales | Total Sales YTD |
-    Comm % | Commissions | Bonus | Date Rcd |
-    Guarantee Period End | Date Pd | Notes
+  Sources: int_payout, dim_date
 */
 
 with payout as (
@@ -45,14 +38,13 @@ final as (
         payout.due_date,
         payout.invoice_amount,
 
-        -- Commissionable sales = recruiter's credit % x invoice amount
+        -- Commissionable sales = recruiter credit % x invoice amount
         payout.invoice_credit_percent * payout.invoice_amount      as commissionable_sales,
 
         payout.total_commission_sales,
 
-        -- Comm % = effective blended rate (commission / commissionable sales)
-        -- Correctly reflects blended rate for invoices that straddle tier boundaries
-        payout.effective_commission_rate                            as comm_percent,
+        -- Comm % = tier rate from config_commission at the time this invoice posted
+        payout.current_tier_rate                                    as comm_percent,
 
         payout.commission_amount,
         payout.bonus_amount,
