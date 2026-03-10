@@ -60,7 +60,7 @@ models:
       - name: recruiter_name
         description: "Employee on the draw plan."
         tests: [not_null]
-      - name: due_date
+      - name: pay_date
         description: "Pay period pay date."
         tests: [not_null]
       - name: draw_amount
