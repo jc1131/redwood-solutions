@@ -52,6 +52,7 @@ unpivoted as (
         candidate_name,
         invoice_amount,
         due_date,
+        offer_signature_date,
         last_modified,
         agreement_job_order_percentage  as credit_percentage,
         agreement_job_order_recruiter   as recruiter_name,
@@ -139,6 +140,7 @@ enriched as (
         active_splits.client_name,
         active_splits.candidate_name,
         active_splits.invoice_amount,
+        offer_signature_date
         active_splits.due_date,
         active_splits.last_modified,
         active_splits.recruiter_name,

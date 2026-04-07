@@ -16,7 +16,7 @@
     the tier calc, so the recruiter sees one commission row per invoice.
     Filtered to current calendar year only so YTD totals reset each Jan 1.
 
-  STEP 2 — RUNNING TOTALS per recruiter ordered by due_date.
+  STEP 2 — RUNNING TOTALS per recruiter ordered by offer_signature_date.
     total_commission_sales  = recruiter's cumulative credited $ (current year)
     total_invoice_ytd       = recruiter's cumulative gross invoice $ (current year)
     These drive which commission tier applies to each invoice.
@@ -27,7 +27,12 @@
     dollar amount that falls in each band and the commission earned in
     that band, then sum back to one row per (invoice × recruiter).
 
-  STEP 4 — PAY DATE RESOLUTION via config_commission_relationship
+  STEP 4 — DUE DATE REJOINED from invoice_detail.
+    due_date is kept separate from the aggregation and YTD logic because
+    it can differ from offer_signature_date. It is only needed for pay
+    date resolution in STEP 5.
+
+  STEP 5 — PAY DATE RESOLUTION via config_commission_relationship
     and form_payment. Priority order:
       1. form_payment.payment_received_date  (explicit receipt override)
       2. due_date + 120 days                 (FullBloom client hard rule)
@@ -68,6 +73,9 @@ payment as (
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- STEP 1: Aggregate multiple credit roles → one row per (invoice × recruiter)
+-- Driven by offer_signature_date which determines the calendar year and tier.
+-- due_date is intentionally excluded here as it can differ from
+-- offer_signature_date and is only needed for pay date resolution in STEP 5.
 -- ─────────────────────────────────────────────────────────────────────────────
 aggregated as (
 
@@ -77,7 +85,7 @@ aggregated as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
+        offer_signature_date,
         last_modified,
         recruiter_name,
         recruiter_email,
@@ -91,15 +99,12 @@ aggregated as (
         string_agg(split_description, ' | ')            as form_detail_description
 
     from invoice_detail
-    -- Restrict to current calendar year so YTD totals and tier lookups
-    -- reset on January 1st and never accumulate across years
-    where extract(year from due_date) = extract(year from current_date())
     group by all
 
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 2: Running YTD totals per recruiter, ordered by due_date
+-- STEP 2: Running YTD totals per recruiter, ordered by offer_signature_date
 -- ─────────────────────────────────────────────────────────────────────────────
 with_ytd as (
 
@@ -110,7 +115,7 @@ with_ytd as (
         sum(invoice_credit_amount)
             over (
                 partition by recruiter_email
-                order by due_date asc
+                order by offer_signature_date asc
                 rows between unbounded preceding and current row
             )                                           as total_commission_sales,
 
@@ -118,7 +123,7 @@ with_ytd as (
         sum(invoice_amount)
             over (
                 partition by recruiter_email
-                order by due_date asc
+                order by offer_signature_date asc
                 rows between unbounded preceding and current row
             )                                           as total_invoice_ytd,
 
@@ -126,7 +131,7 @@ with_ytd as (
         row_number()
             over (
                 partition by recruiter_email
-                order by due_date asc
+                order by offer_signature_date asc
             )                                           as commission_number
 
     from aggregated
@@ -211,12 +216,31 @@ tier_at_time_of_invoice as (
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 4: Resolve commission pay date
+-- STEP 4: Rejoin due_date from invoice_detail now that YTD + tier calc is
+-- complete. Kept separate because due_date and offer_signature_date can differ,
+-- and the aggregation + window logic must be driven solely by offer_signature_date.
+-- ─────────────────────────────────────────────────────────────────────────────
+with_due_date as (
+
+    select
+        commission_summed.*,
+        invoice_detail.due_date
+    from commission_summed
+    left join (
+        select distinct form_response_pk, due_date
+        from invoice_detail
+    ) as invoice_detail
+        on commission_summed.form_response_pk = invoice_detail.form_response_pk
+
+),
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STEP 5: Resolve commission pay date
 -- ─────────────────────────────────────────────────────────────────────────────
 with_pay_date as (
 
     select
-        commission_summed.*,
+        with_due_date.*,
         tier_at_time_of_invoice.current_tier_rate,
         commission_relationship.config_commission_relationship_pk,
         commission_relationship.commission_hold_days,
@@ -227,17 +251,19 @@ with_pay_date as (
         case
             -- 1. Explicit payment receipt overrides everything
             when payment.payment_received_date is not null
-                then payment.payment_received_date
-
+                then date_add(
+                        payment.payment_received_date,
+                        interval commission_relationship.commission_hold_days day
+                     )
             -- 2. FullBloom always holds 120 days regardless of hold_days config
             when commission_relationship.commission_hold_days > 0
-                and commission_summed.client_name = 'FullBloom'
-                then date_add(commission_summed.due_date, interval 120 day)
+                and with_due_date.client_name = 'FullBloom'
+                then date_add(with_due_date.due_date, interval 120 day)
 
             -- 3. Standard hold: add configured days to due date
             when commission_relationship.commission_hold_days > 0
                 then date_add(
-                        commission_summed.due_date,
+                        with_due_date.due_date,
                         interval commission_relationship.commission_hold_days day
                      )
 
@@ -247,7 +273,7 @@ with_pay_date as (
 
             -- 5. hold_days = 0 means pay on due date
             when commission_relationship.commission_hold_days = 0
-                then commission_summed.due_date
+                then with_due_date.due_date
 
             -- 6. Fallback — surface as a data-quality issue
             else date '1900-01-01'
@@ -256,16 +282,16 @@ with_pay_date as (
         -- Capture actual payment receipt date for the "Date Rcd" report column
         payment.payment_received_date
 
-    from commission_summed
+    from with_due_date
     left join tier_at_time_of_invoice
-        on  commission_summed.form_response_pk  = tier_at_time_of_invoice.form_response_pk
-        and commission_summed.recruiter_email   = tier_at_time_of_invoice.recruiter_email
+        on  with_due_date.form_response_pk  = tier_at_time_of_invoice.form_response_pk
+        and with_due_date.recruiter_email   = tier_at_time_of_invoice.recruiter_email
     left join commission_relationship
-        on  commission_summed.recruiter_email
+        on  with_due_date.recruiter_email
             = commission_relationship.primary_recruiter_email
     left join payment
-        on  commission_summed.recruiter_name    = payment.recruiter_name
-        and commission_summed.job_order_number  = payment.job_order_number
+        on  with_due_date.recruiter_name    = payment.recruiter_name
+        and with_due_date.job_order_number  = payment.job_order_number
 
 ),
 

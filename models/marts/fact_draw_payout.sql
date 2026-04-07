@@ -201,6 +201,22 @@ final as (
 
         amt_pd_back,
 
+        -- Portion of commission applied to clearing the debt toward 0.
+        -- Only fires when commission was received (amt_pd_back > 0).
+        case
+            when sort_order = 1 and amt_pd_back > 0
+                then amt_pd_back - greatest(amt_pd_back + balance_before, 0)
+            else cast(0 as numeric)
+        end                                                     as commission_applied_to_balance,
+
+        -- Portion paid to employee after commission clears the debt.
+        -- Only fires when commission was received (amt_pd_back > 0).
+        case
+            when sort_order = 1 and amt_pd_back > 0
+                then greatest(amt_pd_back + balance_before, 0)
+            else cast(0 as numeric)
+        end                                                     as commission_amt_paid_out,
+
         -- Positive = owes money back. Negative = earned more than drawn.
         sum(gross_amt_pd_out_capped - amt_pd_back) over (
             partition by employee_name
