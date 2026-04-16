@@ -188,10 +188,10 @@ secondary_bonuses as (
 final as (
 
     select * from sales_bonuses
-    union all
-    select * from it_bonuses
-    union all
-    select * from activity_bonuses
+    -- union all
+    -- select * from it_bonuses
+    -- union all
+    -- select * from activity_bonuses
     union all
     select * from secondary_bonuses
 

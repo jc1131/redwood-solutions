@@ -52,7 +52,11 @@ with invoice_detail as (
     select * from {{ ref('int_invoice_detail') }}
 
 ),
+int_date as (
 
+    select * from {{ ref('dim_date') }}
+
+),
 commission_config as (
 
     select * from {{ ref('stg_commission_form__config_commission') }}
@@ -85,6 +89,7 @@ aggregated as (
         client_name,
         candidate_name,
         invoice_amount,
+        int_date.year_number as offer_signature_date_year,
         offer_signature_date,
         last_modified,
         recruiter_name,
@@ -99,6 +104,7 @@ aggregated as (
         string_agg(split_description, ' | ')            as form_detail_description
 
     from invoice_detail
+    left join int_date on int_date.date_day = invoice_detail.offer_signature_date
     group by all
 
 ),
@@ -114,7 +120,7 @@ with_ytd as (
         -- Recruiter's cumulative credited sales (used for tier band lookup)
         sum(invoice_credit_amount)
             over (
-                partition by recruiter_email
+                partition by recruiter_email, offer_signature_date_year
                 order by offer_signature_date asc
                 rows between unbounded preceding and current row
             )                                           as total_commission_sales,
@@ -122,7 +128,7 @@ with_ytd as (
         -- Recruiter's cumulative gross invoices (displayed on report)
         sum(invoice_amount)
             over (
-                partition by recruiter_email
+                partition by recruiter_email, offer_signature_date_year
                 order by offer_signature_date asc
                 rows between unbounded preceding and current row
             )                                           as total_invoice_ytd,
