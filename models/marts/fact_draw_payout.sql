@@ -1,32 +1,3 @@
-/*
-  fact_draw_payout
-  ────────────────
-  Grain  : one row per (employee × semi-monthly pay period).
-  Sources: stg_commission_form__config_draw
-           int_commission  (commission earned, mapped to pay periods)
-           dim_date        (semi-monthly pay period calendar)
-
-  Business rules
-  ──────────────
-  1. Balance forward row — appears on draw_start_date (1st of year) with no
-     Gross Amt Pd Out. Establishes opening debt from prior year. The balance
-     forward amount is NOT amt_pd_back — it is money still owed.
-
-  2. Draw is paid each semi-monthly period ONLY if running balance owed is
-     below draw_max cap. If commission covers the employee that period, no
-     draw is issued.
-
-  3. Cap logic — balance forward + draws issued - commission received cannot
-     exceed draw_max. Partial draws issued when approaching cap. Draw resumes
-     if commission brings balance back below cap.
-
-  4. Balance Owed = running (draws + balance forward) - commission received.
-     Positive = owes money back. Negative = earned more than drawn.
-
-  5. Amt Pd Back = commission received that period only. Does NOT include
-     balance forward (that is still owed).
-*/
-
 with config_draw as (
 
     select * from {{ ref('stg_commission_form__config_draw') }}
@@ -70,8 +41,7 @@ commission_by_period as (
 -- ─────────────────────────────────────────────────────────────────────────────
 period_spine as (
 
-    -- (a) Balance forward — prior year debt, flows into balance_owed as a debit,
-    --     shows as $0 in gross_amt_pd_out output column
+    -- (a) Balance forward — prior year debt carried in as opening debit
     select
         config_draw.config_draw_pk,
         config_draw.employee_name,
@@ -121,7 +91,6 @@ with_commission as (
         period_spine.gross_amt_pd_out_raw,
 
         -- Commission only applies to draw period rows (sort_order = 1)
-        -- Balance forward row has no amt_pd_back — it is still owed
         case
             when period_spine.sort_order = 1
                 then coalesce(commission_by_period.commission_amount, 0)
@@ -137,51 +106,92 @@ with_commission as (
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- STEP 3: Apply draw_max cap
+-- STEP 3: Apply draw_max cap using running balance before current row
 -- ─────────────────────────────────────────────────────────────────────────────
 with_cap as (
 
     select
         *,
 
-        coalesce(
-            sum(gross_amt_pd_out_raw - amt_pd_back) over (
-                partition by employee_name
-                order by pay_date asc, sort_order asc
-                rows between unbounded preceding and 1 preceding
+        -- Running balance BEFORE this row (floored at 0).
+        -- Represents how much draw debt is still outstanding entering this period.
+        greatest(
+            coalesce(
+                sum(gross_amt_pd_out_raw - amt_pd_back) over (
+                    partition by employee_name
+                    order by pay_date asc, sort_order asc
+                    rows between unbounded preceding and 1 preceding
+                ),
+                0
             ),
             0
         )                                                       as balance_before,
 
+        -- Cap the draw: if already at/over draw_max, pay $0; if partially over, pay the remainder
         case
             when sort_order = 0
-                then gross_amt_pd_out_raw   -- balance forward flows into running total as debt
-            when coalesce(
-                    sum(gross_amt_pd_out_raw - amt_pd_back) over (
-                        partition by employee_name
-                        order by pay_date asc, sort_order asc
-                        rows between unbounded preceding and 1 preceding
-                    ), 0
-                 ) >= draw_max
-                then 0                      -- cap reached, no draw
-            when coalesce(
-                    sum(gross_amt_pd_out_raw - amt_pd_back) over (
-                        partition by employee_name
-                        order by pay_date asc, sort_order asc
-                        rows between unbounded preceding and 1 preceding
-                    ), 0
-                 ) + gross_amt_pd_out_raw > draw_max
-                then draw_max - coalesce(
+                then gross_amt_pd_out_raw   -- balance forward always flows in full
+            when greatest(
+                    coalesce(
                         sum(gross_amt_pd_out_raw - amt_pd_back) over (
                             partition by employee_name
                             order by pay_date asc, sort_order asc
                             rows between unbounded preceding and 1 preceding
-                        ), 0
+                        ),
+                        0
+                    ),
+                    0
+                 ) >= draw_max
+                then cast(0 as numeric)     -- cap reached, no draw paid
+            when greatest(
+                    coalesce(
+                        sum(gross_amt_pd_out_raw - amt_pd_back) over (
+                            partition by employee_name
+                            order by pay_date asc, sort_order asc
+                            rows between unbounded preceding and 1 preceding
+                        ),
+                        0
+                    ),
+                    0
+                 ) + gross_amt_pd_out_raw > draw_max
+                then draw_max - greatest(
+                        coalesce(
+                            sum(gross_amt_pd_out_raw - amt_pd_back) over (
+                                partition by employee_name
+                                order by pay_date asc, sort_order asc
+                                rows between unbounded preceding and 1 preceding
+                            ),
+                            0
+                        ),
+                        0
                      )                      -- partial draw up to cap
             else gross_amt_pd_out_raw       -- full draw
         end                                                     as gross_amt_pd_out_capped
 
     from with_commission
+
+),
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STEP 4: Compute balance_owed after each row, then derive commission splits
+-- ─────────────────────────────────────────────────────────────────────────────
+with_balance as (
+
+    select
+        *,
+
+        -- Running balance AFTER this row: cumulative (draw - commission), floored at 0.
+        -- Floored because commission overpayment doesn't carry as a credit — it pays out.
+        greatest(
+            sum(gross_amt_pd_out_capped - amt_pd_back) over (
+                partition by employee_name
+                order by pay_date asc, sort_order asc
+                rows between unbounded preceding and current row
+            ),
+            0
+        )                                                       as balance_owed_running
+
+    from with_cap
 
 ),
 
@@ -193,41 +203,43 @@ final as (
         employee_name                           as recruiter_name,
         pay_date,
 
-        -- Balance forward row shows $0 in gross_amt_pd_out — debt is in balance_owed only
+        -- Fixed draw paid out this period. Balance forward row shows $0 here —
+        -- that debt already lives in balance_owed via the opening row.
         case
             when sort_order = 0 then cast(0 as numeric)
             else gross_amt_pd_out_capped
         end                                                     as gross_amt_pd_out,
 
+        -- Total commission earned this period (raw amt paid back)
         amt_pd_back,
 
-        -- Portion of commission applied to clearing the debt toward 0.
-        -- Only fires when commission was received (amt_pd_back > 0).
+        -- Portion of commission used to pay down the outstanding draw balance.
+        -- = however much of amt_pd_back was consumed closing the gap toward 0.
+        -- When there is no prior balance, this is 0.
         case
             when sort_order = 1 and amt_pd_back > 0
-                then amt_pd_back - greatest(amt_pd_back + balance_before, 0)
+                -- balance_before is the debt entering this row (always >= 0)
+                -- amt_pd_back first chips away at balance_before; anything left pays out
+                then least(amt_pd_back, balance_before + gross_amt_pd_out_capped)
             else cast(0 as numeric)
         end                                                     as commission_applied_to_balance,
 
-        -- Portion paid to employee after commission clears the debt.
-        -- Only fires when commission was received (amt_pd_back > 0).
+        -- Portion of commission left after clearing the balance — paid to the employee.
+        -- = amt_pd_back minus whatever was applied to the balance; floored at 0.
         case
             when sort_order = 1 and amt_pd_back > 0
-                then greatest(amt_pd_back + balance_before, 0)
+                then greatest(amt_pd_back - (balance_before + gross_amt_pd_out_capped), 0)
             else cast(0 as numeric)
         end                                                     as commission_amt_paid_out,
 
-        -- Positive = owes money back. Negative = earned more than drawn.
-        sum(gross_amt_pd_out_capped - amt_pd_back) over (
-            partition by employee_name
-            order by pay_date asc, sort_order asc
-            rows between unbounded preceding and current row
-        )                                                       as balance_owed,
+        -- Outstanding draw balance after this period. Floored at 0 —
+        -- overpaid commission does not create a negative (credit) balance.
+        balance_owed_running                                    as balance_owed,
 
         draw_max                                as draw_cap,
         notes
 
-    from with_cap
+    from with_balance
 
 )
 
