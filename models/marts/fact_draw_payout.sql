@@ -90,12 +90,34 @@ with_commission as (
         period_spine.sort_order,
         period_spine.gross_amt_pd_out_raw,
 
-        -- Commission only applies to draw period rows (sort_order = 1)
+        -- Calculate balance amount due and commission paid
         case
-            when period_spine.sort_order = 1
-                then coalesce(commission_by_period.commission_amount, 0)
+            when period_spine.sort_order = 1 then
+                greatest(
+                    coalesce(commission_by_period.commission_amount, 0) - period_spine.gross_amt_pd_out_raw,
+                    0
+                )
             else cast(0 as numeric)
-        end                                                     as amt_pd_back
+        end                                                     as amt_paid_back,
+
+        case
+            when period_spine.sort_order = 1 then
+                least(
+                    coalesce(commission_by_period.commission_amount, 0),
+                    period_spine.gross_amt_pd_out_raw
+                )
+            else cast(0 as numeric)
+        end                                                     as commission_amount_paid,
+
+        -- Remaining commission amount after paying back the balance
+        case
+            when period_spine.sort_order = 1 then
+                greatest(
+                    coalesce(commission_by_period.commission_amount, 0) - period_spine.gross_amt_pd_out_raw,
+                    0
+                )
+            else cast(0 as numeric)
+        end                                                     as remaining_commission
 
     from period_spine
     left join commission_by_period
