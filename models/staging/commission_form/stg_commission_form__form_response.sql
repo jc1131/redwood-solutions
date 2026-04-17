@@ -59,4 +59,4 @@ pk_generation as (
 )
 
 select * from pk_generation
-where offer_signature_date = year(current_year)
+WHERE EXTRACT(YEAR FROM offer_signature_date) = EXTRACT(YEAR FROM CURRENT_DATE())
