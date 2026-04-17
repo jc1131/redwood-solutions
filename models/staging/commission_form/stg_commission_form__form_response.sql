@@ -59,3 +59,4 @@ pk_generation as (
 )
 
 select * from pk_generation
+where offer_signature_date = year(current_year)
