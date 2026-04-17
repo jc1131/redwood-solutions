@@ -64,4 +64,4 @@ final as (
     from payout
 )
 
-select * from final;
+select * from final
