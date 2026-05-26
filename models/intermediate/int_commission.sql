@@ -23,9 +23,8 @@ aggregated as (
         invoice_detail.candidate_name,
 
         round(invoice_detail.invoice_amount,2) as invoice_amount,
-
-        int_date.year_number                     as offer_signature_date_year,
-        invoice_detail.offer_signature_date,
+        invoice_detail.inv_date,
+        invoice_detail.inv_due_date,
 
         invoice_detail.recruiter_name,
         invoice_detail.recruiter_email,
@@ -41,7 +40,7 @@ aggregated as (
 
     from invoice_detail
     left join int_date
-        on int_date.date_day = invoice_detail.offer_signature_date
+        on int_date.date_day = invoice_detail.inv_date
 
     group by all
 
@@ -64,7 +63,7 @@ final as (
         sum(invoice_split_credit_amount)
             over (
                 partition by recruiter_email
-                order by offer_signature_date
+                order by inv_date
             )                                     as total_commission_sales
 
     from aggregated
