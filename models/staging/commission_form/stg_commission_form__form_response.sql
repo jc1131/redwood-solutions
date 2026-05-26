@@ -38,7 +38,11 @@ renamed as (
         account_manager_recruiter,
         working_candidate_percentage_                                   as working_candidate_percentage,
         working_candidate_recruiter,
-        candidate_ownership_percentage_                                 as candidate_ownership_percentage,
+          
+        SAFE_CAST(
+  REGEXP_REPLACE(Candidate_Ownership_Percentage_, r'[^0-9.-]', '')
+  AS NUMERIC
+) / 100                           as candidate_ownership_percentage,
         candidate_ownership_recruiter,
         researcher_percentage                                          as researcher_percentage,
         researcher_recruiter                                           as researcher_recruiter,
