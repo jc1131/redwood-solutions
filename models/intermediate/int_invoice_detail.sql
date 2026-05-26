@@ -157,7 +157,7 @@ enriched as (
             over (partition by active_splits.form_response_pk) = 1.0
                                                                 as is_valid_split,
         concat(
-            format('%.0f%%', active_splits.credit_percentage * 100),
+            format('%.1f%%', active_splits.credit_percentage * 100),
             ' credit — ', active_splits.credit_role
         )                                                       as split_description
     from active_splits
