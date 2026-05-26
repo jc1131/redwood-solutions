@@ -22,7 +22,7 @@ aggregated as (
         invoice_detail.client_name,
         invoice_detail.candidate_name,
 
-        invoice_detail.invoice_amount,
+        round(invoice_detail.invoice_amount,2) as invoice_amount,
 
         int_date.year_number                     as offer_signature_date_year,
         invoice_detail.offer_signature_date,
@@ -31,8 +31,8 @@ aggregated as (
         invoice_detail.recruiter_email,
 
         -- Aggregate all recruiter splits on same invoice
-        sum(invoice_detail.credit_percentage)    as invoice_split_credit_percent,
-        sum(invoice_detail.credit_amount)        as invoice_split_credit_amount,
+        ROUND(sum(invoice_detail.credit_percentage),2)    as invoice_split_credit_percent,
+        ROUND(sum(invoice_detail.credit_amount),2)        as invoice_split_credit_amount,
 
         string_agg(
             invoice_detail.split_description,
@@ -63,9 +63,8 @@ final as (
         -- Running YTD based on recruiter's credited split amount
         sum(invoice_split_credit_amount)
             over (
-                partition by recruiter_email, offer_signature_date_year
+                partition by recruiter_email
                 order by offer_signature_date
-                rows between unbounded preceding and current row
             )                                     as total_commission_sales
 
     from aggregated
@@ -73,4 +72,4 @@ final as (
 )
 
 select * from final
-order by job_order_number asc
+where recruiter_name = 'John Meyer'
