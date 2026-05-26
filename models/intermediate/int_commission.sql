@@ -31,7 +31,7 @@ aggregated as (
         invoice_detail.recruiter_email,
 
         -- Aggregate all recruiter splits on same invoice
-        ROUND(sum(invoice_detail.credit_percentage),2)    as invoice_split_credit_percent,
+        sum(invoice_detail.credit_percentage)    as invoice_split_credit_percent,
         ROUND(sum(invoice_detail.credit_amount),2)        as invoice_split_credit_amount,
 
         string_agg(
@@ -72,4 +72,3 @@ final as (
 )
 
 select * from final
-where recruiter_name = 'John Meyer'
