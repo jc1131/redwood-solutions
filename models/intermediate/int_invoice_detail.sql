@@ -21,15 +21,26 @@ with form_response as (
 */
 invoice_with_due_date as (
 
-    select
+    select 
+
+
+
         *,
+        case
+            when invoice_payment_date = 'Work Start Date'
+                then work_start_date
+            when invoice_payment_date = 'Offer Signature Date'
+                then offer_signature_date
+            else null
+        end as inv_date,
+
         case
             when invoice_payment_date = 'Work Start Date'
                 then date_add(work_start_date,      interval payment_term_number day)
             when invoice_payment_date = 'Offer Signature Date'
                 then date_add(offer_signature_date, interval payment_term_number day)
             else null
-        end as due_date
+        end as inv_due_date
     from form_response
 
 ),
@@ -51,8 +62,8 @@ unpivoted as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
-        offer_signature_date,
+        inv_date,
+        inv_due_date,
         last_modified,
         agreement_job_order_percentage  as credit_percentage,
         agreement_job_order_recruiter   as recruiter_name,
@@ -67,8 +78,8 @@ unpivoted as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
-        offer_signature_date,
+        inv_date,
+        inv_due_date,
         last_modified,
         account_manager_percentage,
         account_manager_recruiter,
@@ -83,8 +94,8 @@ unpivoted as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
-        offer_signature_date,
+        inv_date,
+        inv_due_date,
         last_modified,
         working_candidate_percentage,
         working_candidate_recruiter,
@@ -99,8 +110,8 @@ unpivoted as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
-        offer_signature_date,
+        inv_date,
+        inv_due_date,
         last_modified,
         candidate_ownership_percentage,
         candidate_ownership_recruiter,
@@ -115,8 +126,8 @@ unpivoted as (
         client_name,
         candidate_name,
         invoice_amount,
-        due_date,
-        offer_signature_date,
+        inv_date,
+        inv_due_date,
         last_modified,
         researcher_percentage,
         researcher_recruiter,
@@ -144,8 +155,8 @@ enriched as (
         active_splits.client_name,
         active_splits.candidate_name,
         active_splits.invoice_amount,
-        active_splits.due_date,
-        active_splits.offer_signature_date,
+        active_splits.inv_date,
+        active_splits.inv_due_date,
         active_splits.last_modified,
         active_splits.recruiter_name,
         active_splits.credit_role,
