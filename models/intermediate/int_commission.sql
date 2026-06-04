@@ -14,17 +14,17 @@ aggregated as (
     select
         invoice_detail.form_response_pk,
         invoice_detail.recruiter_name,
-        invoice_detail.inv_date,
+        invoice_detail.inv_date as invoice_date,
         invoice_detail.job_order_number as bullhorn_job_order_number,
         invoice_detail.client_name as company,
         invoice_detail.candidate_name,
-        invoice_detail.inv_due_date,
-        round(invoice_detail.invoice_amount,2) as commissionable_sales,
+        invoice_detail.inv_due_date as invoice_due_date,
+        round(invoice_detail.invoice_amount,2) as invoice_total,
 
 
         -- Aggregate all recruiter splits on same invoice
-        sum(invoice_detail.credit_percentage)    as invoice_split_commissions_percent,
-        ROUND(sum(invoice_detail.credit_amount),2)        as invoice_split_commissions_amount,
+        sum(invoice_detail.credit_percentage)    as recruiter_percentage_of_sale,
+        ROUND(sum(invoice_detail.credit_amount),2)        as commissionable_sales,
 
         string_agg(
             invoice_detail.split_description,
@@ -51,17 +51,17 @@ final as (
 
         aggregated.*,
         -- Running YTD based on recruiter's sales amount
+        sum(invoice_total)
+            over (
+                partition by recruiter_name
+                order by invoice_date
+            )                                     as invoice_total_ytd,
+        -- Running YTD based on recruiter's credited split amount
         sum(commissionable_sales)
             over (
                 partition by recruiter_name
-                order by inv_date
+                order by invoice_date
             )                                     as total_sales_ytd,
-        -- Running YTD based on recruiter's credited split amount
-        sum(invoice_split_commissions_amount)
-            over (
-                partition by recruiter_name
-                order by inv_date
-            )                                     as total_commission_ytd
 
     from aggregated
 
