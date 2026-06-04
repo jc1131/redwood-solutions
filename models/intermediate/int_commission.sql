@@ -60,7 +60,8 @@ final as (
         sum(commissionable_sales)
             over (
                 partition by recruiter_name
-                order by invoice_date
+                order by invoice_date, bullhorn_job_order_number
+                    rows between unbounded preceding and current row
             )                                     as total_sales_ytd,
 
     from aggregated
