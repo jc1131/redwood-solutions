@@ -13,6 +13,8 @@ aggregated as (
 
     select
         invoice_detail.form_response_pk,
+        invoice_detail.created_date,
+        invoice_detail.last_modified,
         invoice_detail.recruiter_name,
         invoice_detail.inv_date as invoice_date,
         invoice_detail.job_order_number as bullhorn_job_order_number,
@@ -54,7 +56,7 @@ final as (
         sum(invoice_total)
             over (
                 partition by recruiter_name
-                order by invoice_date
+                order by invoice_date, bullhorn_job_order_number
             )                                     as invoice_total_ytd,
         -- Running YTD based on recruiter's credited split amount
         sum(commissionable_sales)

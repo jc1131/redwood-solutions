@@ -65,6 +65,7 @@ unpivoted as (
         inv_date,
         inv_due_date,
         last_modified,
+        created_date,
         agreement_job_order_percentage  as credit_percentage,
         agreement_job_order_recruiter   as recruiter_name,
         'Agreement/Job Order'           as credit_role
@@ -81,6 +82,7 @@ unpivoted as (
         inv_date,
         inv_due_date,
         last_modified,
+        created_date,
         account_manager_percentage,
         account_manager_recruiter,
         'Account Manager'
@@ -97,6 +99,7 @@ unpivoted as (
         inv_date,
         inv_due_date,
         last_modified,
+        created_date,
         working_candidate_percentage,
         working_candidate_recruiter,
         'Working Candidate'
@@ -113,6 +116,7 @@ unpivoted as (
         inv_date,
         inv_due_date,
         last_modified,
+        created_date,
         candidate_ownership_percentage,
         candidate_ownership_recruiter,
         'Candidate Ownership'
@@ -129,6 +133,7 @@ unpivoted as (
         inv_date,
         inv_due_date,
         last_modified,
+        created_date,
         researcher_percentage,
         researcher_recruiter,
         'Researcher'
@@ -158,6 +163,7 @@ enriched as (
         active_splits.inv_date,
         active_splits.inv_due_date,
         active_splits.last_modified,
+        active_splits.created_date,
         active_splits.recruiter_name,
         active_splits.credit_role,
         active_splits.credit_percentage,

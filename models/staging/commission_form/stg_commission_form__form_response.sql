@@ -9,6 +9,7 @@ renamed as (
 
     select
         timestamp as last_modified,
+        min(timestamp) OVER (PARTITION BY job_order_number ) as created_date,
         email_address,
         job_order_number,
         client_name,
@@ -56,7 +57,7 @@ renamed as (
 pk_generation as (
     select
     {{ dbt_utils.generate_surrogate_key(['source_key', 'source_row_number']) }} as form_response_pk
-    ,*
+        ,*
     from renamed
     QUALIFY ROW_NUMBER() OVER (PARTITION BY job_order_number ORDER BY last_modified DESC) = 1
 
