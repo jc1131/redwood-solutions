@@ -1,7 +1,72 @@
-with invoice_detail as (
+with manual_adjustment as (
+
+    select
+        {{ dbt_utils.generate_surrogate_key(["'manual-1'", "'Gayle Simons'"]) }} as form_response_pk,
+        'Gayle Simons' as recruiter_name,
+        DATE '2026-09-30' as inv_date,
+        '3032' as job_order_number,
+        'Center for the Collaborative Classroom' as client_name,
+        'Mallery Erickson' as candidate_name,
+        DATE '2026-10-20' as inv_due_date,
+        15000 as invoice_amount,
+        1.0 as credit_percentage,
+        15000 as credit_amount,
+        'manual adjustment' as split_description
+
+    union all
+
+    select
+        {{ dbt_utils.generate_surrogate_key(["'manual-1'", "'Lucas Ingmire'"]) }} as form_response_pk,
+        'Lucas Ingmire' as recruiter_name,
+        DATE '2026-09-30' as inv_date,
+        '3032' as job_order_number,
+        'Center for the Collaborative Classroom' as client_name,
+        'Mallery Erickson' as candidate_name,
+        DATE '2026-10-20' as inv_due_date,
+        -5000 as invoice_amount,
+        1.0 as credit_percentage,
+        -5000 as credit_amount,
+        'manual adjustment' as split_description
+
+),
+
+    
+    int_invoice_detail as (
 
     select * from {{ ref('int_invoice_detail') }}
 
+),
+    invoice_detail as (
+
+    select
+        form_response_pk,
+        recruiter_name,
+        inv_date,
+        job_order_number,
+        client_name,
+        candidate_name,
+        inv_due_date,
+        invoice_amount,
+        credit_percentage,
+        credit_amount,
+        split_description
+    from int_invoice_detail
+
+    union all
+
+    select
+        form_response_pk,
+        recruiter_name,
+        inv_date,
+        job_order_number,
+        client_name,
+        candidate_name,
+        inv_due_date,
+        invoice_amount,
+        credit_percentage,
+        credit_amount,
+        split_description
+    from manual_adjustment
 ),
 
 
